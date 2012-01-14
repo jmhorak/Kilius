@@ -1,0 +1,43 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+   <title>My XHR Test</title>
+   <link rel="shortcut icon" href="http://localhost:8000/favicon.ico" />
+   <script type="text/javascript">
+      var runXHRTest = function() {
+         var output = document.getElementById('result'),
+             oData = new FormData(document.forms.namedItem('urlInfo')),
+             oXHR = new XMLHttpRequest();
+
+         oXHR.open('POST', '/service/shorten', true);
+         oXHR.setRequestHeader('Content-Type', 'application/json');
+         oXHR.onreadystatechange = function(oEvent) {
+            if (oXHR.readyState === 4) {
+               if (oXHR.status === 200) {
+                  output.innerHTML = "Success";
+                  console.log(oXHR.responseText);
+               } else {
+                  output.innerHTML = "Error  " + oXHR.status + " " + oXHR.statusText;
+                  console.log('Error - ' + oXHR.statusText);
+               }
+            }
+         }
+
+         //oXHR.send(oData);
+         oXHR.send(JSON.stringify({attempt: 'action'}));
+      }
+   </script>
+</head>
+<body>
+<form enctype="multipart/form-data" method="post" name="urlInfo">
+   <label for="url">URL:</label>
+   <input type="text" placeholder="Enter a URL" name="url" size="20" maxlength="2048"/><br />
+   <input type="button" value="Press Me" onclick="runXHRTest()"><br />
+   <label>Some select:</label>
+   <select name="dd" multiple><option value="1">One</option><option value="2">Two</option></select><br />
+</form>
+<div id="result">
+
+</div>
+</body>
+</html>
