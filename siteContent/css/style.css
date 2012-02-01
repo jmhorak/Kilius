@@ -39,11 +39,10 @@ body, button, input, select, textarea { font-family: sans-serif; color: #222; }
 /* 
  * Remove text-shadow in selection highlight: h5bp.com/i
  * These selection declarations have to be separate
- * Also: hot pink! (or customize the background color to match your design)
  */
 
-::-moz-selection { background: #fe57a1; color: #fff; text-shadow: none; }
-::selection { background: #fe57a1; color: #fff; text-shadow: none; }
+::-moz-selection { background: #8F560C; color: #fff; text-shadow: none; }
+::selection { background: #8F560C; color: #fff; text-shadow: none; }
 
 
 /* =============================================================================
@@ -219,13 +218,25 @@ div#container {
 
 }
 
+div#banner {
+   background-color: #1F608D;
+   z-index: -1;
+   height: 20em;
+   width: 650px;
+   position: absolute;
+   top: 7em;
+   margin: 0 -325px;
+   left: 50%;
+   border-radius: 20px;
+}
+
 span#bigK {
    font-size: 1.54em;
    position: relative;
    left: 0.18em;
    top: 0.37em;
-   text-shadow: 3px 3px 100px white, -3px -3px 4px black;
-   color: #1F1F1F;
+   text-shadow: -3px -3px 4px black;
+   color: #202020;
 }
 
 h1#logo {
@@ -235,16 +246,23 @@ h1#logo {
    top: 0.45em;
    left: -2em;
    font: bold 6.0em 'Open Sans', sans-serif;
-   color: #e5e5e5;
+   text-shadow: -3px -3px 4px black;
+   color: #202020;
 }
 
 div#main {
+   background-color: gray;
    width: 500px;
    margin: 0 auto;
    padding: 50px;
-   background-color: rgba(177, 177, 177, 0.6);
+   background-image: linear-gradient(bottom, rgb(100, 100, 100) 0%, gray 100%);
+   background-image: -o-linear-gradient(bottom, rgb(100, 100, 100) 0%, gray 100%);
+   background-image: -moz-linear-gradient(bottom, rgb(100, 100, 100) 0%, gray 100%);
+   background-image: -ms-linear-gradient(bottom, rgb(100, 100, 100) 0%, gray 100%);
+   background-image: -webkit-linear-gradient(bottom, rgb(100, 100, 100) 0%, gray 100%);
    border-radius: 15px;
    text-align: center;
+   border: solid 5px gray;
 }
 
 form.content {
@@ -254,34 +272,99 @@ form.content {
 input#url-input {
    width: 300px;
    padding: 10px 15px;
+   border-right: solid 1px #0A3A5C;
    -webkit-border-top-left-radius: 6px;
    -webkit-border-bottom-left-radius: 6px;
-   -webkit-box-shadow: inset 0px 1px 0px #2ab7ec, 0px 5px 0px 0px #032b3a, 0px 10px 5px #999 ;
+   -moz-border-top-left-radius: 6px;
+   -moz-border-bottom-left-radius: 6px;
+   border-top-left-radius: 6px;
+   border-bottom-left-radius: 6px;
+   -webkit-box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   -moz-box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   -o-box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
 }
 
 a#submit-btn {
-   left: -7px;
+   background-color: #1F608D;
+   left: -4px;
    position: relative;
-   padding: 12px 15px;
-   background-image: -webkit-linear-gradient(bottom, rgb(44,160,202) 0%, rgb(62,184,229) 100%);
+   padding: 11px 15px;
+   /*color: #6C8CD5;*/
+   color: #72A4C7;
+   background-image: linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
+   background-image: -o-linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
+   background-image: -moz-linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
+   background-image: -ms-linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
+   background-image: -webkit-linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
    -webkit-border-top-right-radius: 6px;
    -webkit-border-bottom-right-radius: 6px;
-   -webkit-box-shadow: inset 0px 1px 0px #2ab7ec, 0px 5px 0px 0px #156785, 0px 10px 5px #999;
-   font: 1.1em 'Open Sans', sans-serif;
+   -moz-border-top-right-radius: 6px;
+   -moz-border-bottom-right-radius: 6px;
+   border-top-right-radius: 6px;
+   border-bottom-right-radius: 6px;
+   -webkit-box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   -moz-box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   -o-box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   box-shadow: inset 0 1px 0 #5397C7, 0 5px 0 0 #0A3A5C, 0 10px 5px #999;
+   font: 15px 'Open Sans', sans-serif;
    text-decoration: none;
 }
 
+a#submit-btn:active {
+   background-color: #2A4480;
+   top: 3px;
+   background-image: linear-gradient(bottom, #1F608D 0%, #2C506A 100% );
+   background-image: -o-linear-gradient(bottom, #1F608D 0%, #2C506A 100% );
+   background-image: -moz-linear-gradient(bottom, #1F608D 0%, #2C506A 100% );
+   background-image: -ms-linear-gradient(bottom, #1F608D 0%, #2C506A 100% );
+   background-image: -webkit-linear-gradient(bottom, #1F608D 0%, #2C506A 100% );
+   -webkit-box-shadow: inset 0px 1px 0px #5397C7, 0px 2px 0px 0px #0A3A5C, 0px 5px 3px #999;
+   -moz-box-shadow: inset 0px 1px 0px #5397C7, 0px 2px 0px 0px #0A3A5C, 0px 5px 3px #999;
+   -o-box-shadow: inset 0px 1px 0px #5397C7, 0px 2px 0px 0px #0A3A5C, 0px 5px 3px #999;
+   box-shadow: inset 0px 1px 0px #5397C7, 0px 2px 0px 0px #0A3A5C, 0px 5px 3px #999;
+}
+
 a#submit-btn:hover {
-   color: #8b008b;
+   color: white;
+}
+
+a#submit-btn:active:hover {
+   color: black;
+}
+
+a#submit-btn::before {
+   content: "";
+   width: 1px;
+   height: 31px;
+   position: absolute;
+   display: block;
+   padding-top: 8px;
+   top: 3px;
+   left: -1px;
+   color: white;
+   border-right: solid 1px #0A3A5C;
+   background-color: rgba(255, 255, 255, 0);
+   -webkit-box-shadow: inset 0px 1px 0px #5397C7, 0px 5px 0px 0px #0A3A5C;
+   -moz-box-shadow: inset 0px 1px 0px #5397C7, 0px 5px 0px 0px #0A3A5C;
+   -o-box-shadow: inset 0px 1px 0px #5397C7, 0px 5px 0px 0px #0A3A5C;
+   box-shadow: inset 0px 1px 0px #5397C7, 0px 5px 0px 0px #0A3A5C;
+}
+
+a#submit-btn:active::before {
+   top: -1px;
+   left:-6px;
+   width: 5px;
+   border-right: none;
+   -webkit-box-shadow: 6px 4px 4px #202020;
+   -moz-box-shadow: 6px 4px 4px #202020;
+   -o-box-shadow: 6px 4px 4px #202020;
+   box-shadow: 6px 4px 4px #202020;
 }
 
 a.siteBtn {
    text-decoration: none;
    color: white;
-}
-
-a.siteBtn:hover {
-   color: #f08080;
 }
 
 footer {
@@ -293,14 +376,16 @@ footer {
 div.copyright {
    text-align: center;
    font: 1em 'Open Sans', sans-serif;
-   color: white;
+   color: gray;
 }
 
+a#blogLink {
+   border-bottom: 1px dotted;
+}
 
-
-
-
-
+a#blogLink:hover {
+   color: #6C8CD5;
+}
 
 /* ==|== non-semantic helper classes ========================================
    Please define your styles before this section.
