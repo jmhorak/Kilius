@@ -222,7 +222,8 @@ div#banner {
    background-color: #1F608D;
    z-index: -1;
    height: 20em;
-   width: 650px;
+   /*width: 650px;*/
+   width: 50em;
    position: absolute;
    top: 7em;
    margin: 0 -325px;
@@ -365,6 +366,92 @@ a#submit-btn:active::before {
 a.siteBtn {
    text-decoration: none;
    color: white;
+}
+
+div#userShortenedList {
+   font: 1.75em 'Open Sans', sans-serif;
+   top: 2em;
+   position: relative;
+   background-color: white;
+   width: 28em;
+   margin: 0 auto;
+}
+
+div#listHeader {
+   background-color: gray;
+   margin: 0 4px;
+   font: 0.75em 'Open Sans', sans-serif;
+   text-indent: 5px;
+}
+
+strong#shortLinkHead {
+   width: 14em;
+   float: left;
+   text-indent: 3.3em;
+}
+
+strong#longLinkHead {
+   width: 18em;
+   float: left;
+}
+
+strong#linkHitsHead {
+   width: 4em;
+   float: right;
+   text-align: right;
+   padding-right: 5px;
+}
+
+ul#shortList {
+   list-style-type: none;
+   margin: 0;
+   padding: 0;
+   text-indent: 5px;
+   font-size: 0.75em;
+}
+
+li.historyLink {
+   border-bottom: 1px solid #1F608D;
+   line-height: 2.2em;
+   height: 2.2em;
+}
+
+li.historyLink.firstLink {
+   border-bottom: none;
+}
+
+div.shortContainer {
+   display: inline;
+   width: 14em;
+   float: left;
+}
+
+span.copyLink {
+   border-right: 1px solid black;
+   padding-right: 5px;
+   padding-left: 5px;
+}
+
+a.shortLink {
+   text-overflow: ellipsis;
+   overflow: hidden;
+}
+
+a.longLink {
+   float: left;
+   width: 18em;
+   padding-right: 5px;
+   text-overflow: ellipsis;
+   overflow: hidden;
+}
+
+span.hitCount {
+   float: right;
+   text-align: right;
+   width: 4em;
+   text-overflow: ellipsis;
+   overflow: hidden;
+   padding-right: 10px;
 }
 
 footer {
