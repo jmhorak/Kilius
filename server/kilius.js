@@ -12,10 +12,10 @@ var http = require('http'),
 
 var kilius = {
   // Serve HTML
-  servePage: function(page, response) {
+  servePageFor: function(client, page, response) {
     fs.readFile(page, function(err, fd) {
       if (err) {
-        console.log('Could not load ' + page);
+        log(client, 'Could not load ' + page);
         response.writeHead(503); // 503 => Service temporarily unavailable
         response.end();
       } else {
@@ -26,11 +26,24 @@ var kilius = {
     })
   },
 
-  serveFavIcon: function(response) {
-    fs.readFile('favicon.ico', function(err, fd) {
+  serveResourceFor: function(client, resource, response) {
+    fs.readFile(resource, function(err, fd) {
+      if (err) {
+        log(client, ['Invalid resource ', resource, ' requested'].join(''));
+        response.writeHead(404); // 404 => Not Found
+        response.end();
+      } else {
+        response.writeHead(200);
+        response.end(fd);
+      }
+    });
+  },
+
+  serveFavIconFor: function(client, path, response) {
+    fs.readFile(path, function(err, fd) {
       if (err) {
         // This isn't a terrible problem, we'll just return nothing
-        console.log('Could not load the favicon');
+        log(client, 'Could not load the favicon');
         response.writeHead(200);
         response.end();
       } else {
@@ -49,6 +62,12 @@ var kilius = {
     }).on('end', function() {
       callback(JSON.parse(data));
     });
+  },
+
+  log: function(client, msg) {
+    console.log([
+      '[', client.toString(), '] ', new Date(), ': ', msg
+    ].join(''));
   }
 }
 
@@ -56,7 +75,8 @@ http.createServer(function(req, res) {
 
   try {
     var servURL = urlService.parse(req.url),
-        path = servURL.pathname;
+        path = servURL.pathname,
+        host = req.headers.host;
 
     if (path.charAt(0) === ':') {
       path.substring(1);
@@ -64,11 +84,11 @@ http.createServer(function(req, res) {
 
     if (path === '/') {
       // Requesting the index.html page
-      kilius.servePage('test.html', res);
+      kilius.servePageFor(host, '../siteContent/index.html', res);
 
     } else if (path === '/favicon.ico') {
       // Requesting the favicon for our page
-      kilius.serveFavIcon(res);
+      kilius.serveFavIconFor(host, '../siteContent/favicon.ico', res);
 
     } else if (path.indexOf('/service') === 0) {
 
@@ -85,11 +105,13 @@ http.createServer(function(req, res) {
         res.end();
       }
       // TODO: Add other services (login, track)
-    } else {
+    } else if (path.indexOf('/+') == 0) {
       // Need to redirect to the given URL
+    } else {
+      kilius.serveResourceFor(host, '../siteContent/' + path, res);
     }
   } catch (e) {
-    console.log('createServer: Exception thrown: ' + e.toString());
+    kilius.log('Kilius Server', 'createServer: Exception thrown: ' + e.toString());
 
     res.writeHead(500); // 500 => Internal Server Error
     res.end();
