@@ -35,7 +35,27 @@ var kilius = {
         response.writeHead(404); // 404 => Not Found
         response.end();
       } else {
-        response.writeHead(200);
+        switch (true) {
+          case /\.css$/i.test(resource):
+            response.writeHead(200, { 'Content-Type': 'text/css' });
+            break;
+
+          case /\.html?$/i.test(resource):
+            response.writeHead(200, { 'Content-Type': 'text/html' });
+            break;
+
+          case /\.js$/i.test(resource):
+            response.writeHead(200, { 'Content-Type': 'text/javascript' });
+            break;
+
+          case /\.ico$/i.test(resource):
+            response.writeHead(200, { 'Content-Type': 'image/x-icon' });
+            break;
+
+          default:
+            response.writeHead(200);
+            break;
+        }
         response.end(fd);
       }
     });
@@ -129,4 +149,3 @@ dbConnect.open(function(err, result) {
     }).listen(8642);
   }
 });
-
