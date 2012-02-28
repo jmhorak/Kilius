@@ -8,7 +8,9 @@
 var http = require('http'),
     fs = require('fs'),
     urlService = require('url'),
-    sh = require('./node_modules/modShorten/shortenURL.js');
+    sh = require('./node_modules/modShorten/shortenURL.js'),
+    mongo = require('mongodb'),
+    dbConnect = null;
 
 var kilius = {
   // Serve HTML
@@ -91,49 +93,59 @@ var kilius = {
   }
 }
 
-http.createServer(function(req, res) {
+dbConnect = new mongo.Db('kilius', new mongo.Server('localhost', 27012, {}));
 
-  try {
-    var servURL = urlService.parse(req.url),
-        path = servURL.pathname,
-        host = req.headers.host;
+dbConnect.open(function(err, result) {
+  if (err) {
+    // Couldn't initialize the database, pack it up - we're done
+    throw err;
+  } else {
+    // Create the server
+    http.createServer(function(req, res) {
+      try {
+        var servURL = urlService.parse(req.url),
+            path = servURL.pathname,
+            host = req.headers.host;
 
-    if (path.charAt(0) === ':') {
-      path.substring(1);
-    }
+        if (path.charAt(0) === ':') {
+          path.substring(1);
+        }
 
-    if (path === '/') {
-      // Requesting the index.html page
-      kilius.servePageFor(host, '../siteContent/index.html', res);
+        if (path === '/') {
+          // Requesting the index.html page
+          kilius.servePageFor(host, '../siteContent/index.html', res);
 
-    } else if (path === '/favicon.ico') {
-      // Requesting the favicon for our page
-      kilius.serveFavIconFor(host, '../siteContent/favicon.ico', res);
+        } else if (path === '/favicon.ico') {
+          // Requesting the favicon for our page
+          kilius.serveFavIconFor(host, '../siteContent/favicon.ico', res);
 
-    } else if (path.indexOf('/service') === 0) {
+        } else if (path.indexOf('/service') === 0) {
 
-      if (path.indexOf('/shorten') === 8) {
-        kilius.getRequestData(req, function(data) {
-          sh.shorten(data, function(url) {
-            res.writeHead(200, { 'Content-Type': 'application/json'});
-            res.end(JSON.stringify({ url: url }));
-          });
-        });
-      } else {
-        // Service not found
-        res.writeHead(501); // 501 => Not Implemented
+          if (path.indexOf('/shorten') === 8) {
+            kilius.getRequestData(req, function(data) {
+              data.database = dbConnect;
+              sh.shorten(data, function(url) {
+                res.writeHead(200, { 'Content-Type': 'application/json'});
+                res.end(JSON.stringify({ url: url }));
+              });
+            });
+          } else {
+            // Service not found
+            res.writeHead(501); // 501 => Not Implemented
+            res.end();
+          }
+          // TODO: Add other services (login, track)
+        } else if (path.indexOf('/+') == 0) {
+          // Need to redirect to the given URL
+        } else {
+          kilius.serveResourceFor(host, '../siteContent/' + path, res);
+        }
+      } catch (e) {
+        kilius.log('Kilius Server', 'createServer: Exception thrown: ' + e.toString());
+
+        res.writeHead(500); // 500 => Internal Server Error
         res.end();
       }
-      // TODO: Add other services (login, track)
-    } else if (path.indexOf('/+') == 0) {
-      // Need to redirect to the given URL
-    } else {
-      kilius.serveResourceFor(host, '../siteContent/' + path, res);
-    }
-  } catch (e) {
-    kilius.log('Kilius Server', 'createServer: Exception thrown: ' + e.toString());
-
-    res.writeHead(500); // 500 => Internal Server Error
-    res.end();
+    }).listen(8642);
   }
-}).listen(8642);
+});
