@@ -73,7 +73,7 @@ var kilius = {
   }
 }
 
-dbConnect = new mongo.Db('kilius', new mongo.Server('localhost', 27012, {}));
+dbConnect = new mongo.Db('kilius', new mongo.Server('localhost', 27017, {}));
 
 dbConnect.open(function(err, result) {
   if (err) {
