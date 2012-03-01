@@ -9,12 +9,15 @@ var http = require('http'),
     fs = require('fs'),
     urlService = require('url'),
     sh = require('./node_modules/modShorten/shortenURL.js'),
-    mongo = require('mongodb'),
-    dbConnect = null;
+    m = require('mongodb'),
+    mongo = null,
+    server = null;
 
-var kilius = {
+var Kilius = function() {
+  var that = this;
+
   // Serve HTML
-  servePageFor: function(client, page, response) {
+  this.servePageFor = function(client, page, response) {
     fs.readFile(page, function(err, fd) {
       if (err) {
         log(client, 'Could not load ' + page);
@@ -26,9 +29,9 @@ var kilius = {
         response.end(fd);
       }
     })
-  },
+  };
 
-  serveResourceFor: function(client, resource, response) {
+  this.serveResourceFor = function(client, resource, response) {
     fs.readFile(resource, function(err, fd) {
       if (err) {
         log(client, ['Invalid resource ', resource, ' requested'].join(''));
@@ -59,9 +62,9 @@ var kilius = {
         response.end(fd);
       }
     });
-  },
+  };
 
-  serveFavIconFor: function(client, path, response) {
+  this.serveFavIconFor = function(client, path, response) {
     fs.readFile(path, function(err, fd) {
       if (err) {
         // This isn't a terrible problem, we'll just return nothing
@@ -74,9 +77,9 @@ var kilius = {
         response.end(fd);
       }
     })
-  },
+  };
 
-  getRequestData: function(request, callback) {
+  this.getRequestData = function(request, callback) {
     var data = [];
     request.on('data', function(chunk) {
       data.push(chunk);
@@ -84,68 +87,88 @@ var kilius = {
     }).on('end', function() {
       callback(JSON.parse(data));
     });
-  },
+  };
 
-  log: function(client, msg) {
+  this.log = function(client, msg) {
     console.log([
       '[', client.toString(), '] ', new Date(), ': ', msg
     ].join(''));
-  }
+  };
+
+  // Start the server
+  http.createServer(function(req, res) {
+    try {
+      var servURL = urlService.parse(req.url),
+          path = servURL.pathname,
+          host = req.headers.host;
+
+      if (path.charAt(0) === ':') {
+        path.substring(1);
+      }
+
+      if (path === '/') {
+        // Requesting the index.html page
+        that.servePageFor(host, '../siteContent/index.html', res);
+
+      } else if (path === '/favicon.ico') {
+        // Requesting the favicon for our page
+        that.serveFavIconFor(host, '../siteContent/favicon.ico', res);
+
+      } else if (path.indexOf('/service') === 0) {
+
+        if (path.indexOf('/shorten') === 8) {
+          that.getRequestData(req, function(data) {
+            data.database = mongo;
+            sh.shorten(data, function(url) {
+              res.writeHead(200, { 'Content-Type': 'application/json'});
+              res.end(JSON.stringify({ url: url }));
+            });
+          });
+        } else {
+          // Service not found
+          res.writeHead(501); // 501 => Not Implemented
+          res.end();
+        }
+        // TODO: Add other services (login, track)
+      } else if (path.indexOf('/+') == 0) {
+        // Need to redirect to the given URL
+      } else {
+        that.serveResourceFor(host, '../siteContent/' + path, res);
+      }
+    } catch (e) {
+      that.log('Kilius Server', 'createServer: Exception thrown: ' + e.toString());
+
+      res.writeHead(500); // 500 => Internal Server Error
+      res.end();
+    }
+  }).listen(8642);
+
 }
 
-dbConnect = new mongo.Db('kilius', new mongo.Server('localhost', 27017, {}));
+mongo = new m.Db('kilius', new m.Server('localhost', 27017, {}));
 
-dbConnect.open(function(err, result) {
-  if (err) {
-    // Couldn't initialize the database, pack it up - we're done
-    throw err;
-  } else {
-    // Create the server
-    http.createServer(function(req, res) {
-      try {
-        var servURL = urlService.parse(req.url),
-            path = servURL.pathname,
-            host = req.headers.host;
+mongo.open(function(err, result) {
+  var throwOnErr = function(err) { if (err) { throw err; } };
 
-        if (path.charAt(0) === ':') {
-          path.substring(1);
-        }
+  throwOnErr(err);
 
-        if (path === '/') {
-          // Requesting the index.html page
-          kilius.servePageFor(host, '../siteContent/index.html', res);
-
-        } else if (path === '/favicon.ico') {
-          // Requesting the favicon for our page
-          kilius.serveFavIconFor(host, '../siteContent/favicon.ico', res);
-
-        } else if (path.indexOf('/service') === 0) {
-
-          if (path.indexOf('/shorten') === 8) {
-            kilius.getRequestData(req, function(data) {
-              data.database = dbConnect;
-              sh.shorten(data, function(url) {
-                res.writeHead(200, { 'Content-Type': 'application/json'});
-                res.end(JSON.stringify({ url: url }));
-              });
-            });
-          } else {
-            // Service not found
-            res.writeHead(501); // 501 => Not Implemented
-            res.end();
-          }
-          // TODO: Add other services (login, track)
-        } else if (path.indexOf('/+') == 0) {
-          // Need to redirect to the given URL
-        } else {
-          kilius.serveResourceFor(host, '../siteContent/' + path, res);
-        }
-      } catch (e) {
-        kilius.log('Kilius Server', 'createServer: Exception thrown: ' + e.toString());
-
-        res.writeHead(500); // 500 => Internal Server Error
-        res.end();
-      }
-    }).listen(8642);
-  }
+  // Need to init the collections
+  mongo.collection('counter', {safe: true}, function(err, result) {
+    if (err) {
+      mongo.createCollection('counter', {safe: true}, function(err, collection) {
+        throwOnErr(err);
+        // Initialize the counter collection
+        collection.insert({ tbl: 'links', c: 0 }, {safe: true}, function(err, result) {
+          debugger;
+          throwOnErr(err);
+        });
+      });
+    }
+  });
+  mongo.collection('links', {safe: true}, function(err, result) {
+    if (err) {
+      mongo.createCollection('links', {safe: true}, function(err) { throwOnErr(err); });
+    }
+  });
+  server = new Kilius();
 });
