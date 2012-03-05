@@ -119,6 +119,7 @@ var Kilius = function() {
         if (path.indexOf('/shorten') === 8) {
           that.getRequestData(req, function(data) {
             data.database = mongo;
+            data.clientID = host;
             sh.shorten(data, function(url) {
               res.writeHead(200, { 'Content-Type': 'application/json'});
               res.end(JSON.stringify({ url: url }));
@@ -159,7 +160,6 @@ mongo.open(function(err, result) {
         throwOnErr(err);
         // Initialize the counter collection
         collection.insert({ tbl: 'links', c: 0 }, {safe: true}, function(err, result) {
-          debugger;
           throwOnErr(err);
         });
       });
