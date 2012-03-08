@@ -17,7 +17,7 @@ var Kilius = function() {
   var that = this,
       blackList = [],
       doLog = function(collection, payload) {
-          collection.insert(payload, {safe: false});
+        collection.insert(payload, {safe: false});
       };
 
   // Check for black-listed clients
@@ -91,6 +91,35 @@ var Kilius = function() {
     })
   };
 
+  this.createShortenedURL = function(host, req, res) {
+    that.getRequestData(req, function (data) {
+      data.database = mongo;
+      data.clientID = host;
+      sh.shorten(data, function (result) {
+        that.log(host, ['Finished shortening URL as [', result.url, '] ',
+          (24 - result.throttle).toString(), ' more requests available today'].join(''));
+
+        res.writeHead(201, { 'Content-Type':'application/json'}); // 201 => Created New Item
+        res.end(JSON.stringify({
+          url:result.url,
+          throttle:result.throttle
+        }));
+      }, function (err) {
+        res.writeHead(500, { 'Content-Type':'application/json'});
+        res.end(JSON.stringify({
+          isErr:true,
+          errCode:err.code,
+          errMessage:err.clientMessage
+        }));
+
+        // Remove the client information before writing to the error log
+        delete err.clientMessage;
+
+        that.logError(host, JSON.stringify(err), 500);
+      });
+    });
+  };
+
   this.getRequestData = function(request, callback) {
     var data = [];
     request.on('data', function(chunk) {
@@ -98,6 +127,18 @@ var Kilius = function() {
     }).on('end', function() {
       callback(JSON.parse(data));
     });
+  };
+
+  this.handleBlackListConnected = function(host, res) {
+    that.logError(host, 'Blacklisted client attempting to connect', 403);
+    res.writeHead(403); // Forbidden
+    res.end();
+  };
+
+  this.handleUnsupportedRequest = function(host, verb, path, res) {
+    that.logError(host, [verb, ' for ', path, ' not implemented'].join(''), 501);
+    res.writeHead(405); // 405 => Method not allowed
+    res.end();
   };
 
   this.log = function(client, msg) {
@@ -115,6 +156,7 @@ var Kilius = function() {
       msg: msg,
       code: code
     });
+    console.log(msg);
   };
 
   // Start the server
@@ -122,15 +164,14 @@ var Kilius = function() {
     try {
       var servURL = urlService.parse(req.url),
           path = servURL.pathname,
-          host = req.headers.host;
+          host = req.headers.host,
+          verb = req.method;
 
       that.log(host, 'Starting to process request');
 
       if (that.isBlackListed(host)) {
         // This user is not allowed
-        that.logError(host, 'Blacklisted client attempting to connect', 403);
-        res.writeHead(403); // Forbidden
-        res.end();
+        that.handleBlackListConnected(host, res);
         return;
       }
 
@@ -138,55 +179,37 @@ var Kilius = function() {
         path.substring(1);
       }
 
-      if (path === '/') {
-        // Requesting the index.html page
-        that.servePageFor(host, '../siteContent/index.html', res);
+      // TODO: Add other services (login, track)
+      switch(verb) {
+        case 'GET':
+          if (path === '/') {
+            // Requesting the index.html page
+            that.servePageFor(host, '../siteContent/index.html', res);
 
-      } else if (path === '/favicon.ico') {
-        // Requesting the favicon for our page
-        that.serveFavIconFor(host, '../siteContent/favicon.ico', res);
+          } else if (path === '/favicon.ico') {
+            // Requesting the favicon for our page
+            that.serveFavIconFor(host, '../siteContent/favicon.ico', res);
 
-      } else if (path.indexOf('/service') === 0) {
+          } else if (path.indexOf('/+') === 0) {
+            // Resolve the URL
 
-        if (path.indexOf('/shorten') === 8) {
-          that.getRequestData(req, function(data) {
-            data.database = mongo;
-            data.clientID = host;
-            sh.shorten(data, function(result) {
-              that.log(host, ['Finished shortening URL as [', result.url, '] ',
-                (24 - result.throttle).toString(), ' more requests available today'].join(''));
+          } else {
+            that.serveResourceFor(host, '../siteContent/' + path, res);
+          }
+          break;
 
-              res.writeHead(200, { 'Content-Type': 'application/json'});
-              res.end(JSON.stringify({
-                url: result.url,
-                throttle: result.throttle
-              }));
-            }, function(err) {
-              // TODO: Should this return 500 instead?
-              res.writeHead(200, { 'Content-Type': 'application/json'});
-              res.end(JSON.stringify({
-                isErr: true,
-                errCode: err.code,
-                errMessage: err.clientMessage
-              }));
+        case 'POST':
+          if (path.indexOf('/+') === 0) {
+            that.createShortenedURL(host, req, res);
+          } else {
+            that.handleUnsupportedRequest(host, verb, path, res);
+          }
+          break;
 
-              // Remove the client information before writing to the error log
-              delete err.clientMessage;
-
-              that.logError(host, JSON.stringify(err), 200);
-            });
-          });
-        } else {
-          // Service not found
-          that.logError(host, 'Service not implemented', 501);
-          res.writeHead(501); // 501 => Not Implemented
-          res.end();
-        }
-        // TODO: Add other services (login, track)
-      } else if (path.indexOf('/+') == 0) {
-        // Need to redirect to the given URL
-      } else {
-        that.serveResourceFor(host, '../siteContent/' + path, res);
+        default:
+            // Not supporting this verb
+          that.handleUnsupportedRequest(host, verb, path, res);
+          break;
       }
     } catch (e) {
       that.logError('Kilius Server', 'createServer: Exception thrown: ' + e.toString(), 500);

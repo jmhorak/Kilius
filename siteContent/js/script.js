@@ -45,7 +45,7 @@ $(document).ready(function() {
       return;
     }
 
-    oXHR.open('POST', '/service/shorten', true);
+    oXHR.open('POST', '/+/', true);
     oXHR.setRequestHeader('Content-Type', 'application/json');
     oXHR.onreadystatechange = function(oEvent) {
       var resp = {},
@@ -53,7 +53,7 @@ $(document).ready(function() {
           ul = null;
 
       if (oXHR.readyState === 4) {
-        if (oXHR.status === 200) {
+        if (oXHR.status === 201) {
           resp = JSON.parse(oXHR.responseText);
           li = kilius.createListItem(resp.url, url.value, 7);
           ul = document.getElementById('shortList');
