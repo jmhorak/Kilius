@@ -9,6 +9,7 @@ var http = require('http'),
     fs = require('fs'),
     urlService = require('url'),
     sh = require('./node_modules/modShorten/shortenURL.js'),
+    rs = require('./node_modules/modResolve/resolveURL.js'),
     m = require('mongodb'),
     mongo = null,
     server = null;
@@ -99,7 +100,11 @@ var Kilius = function() {
         that.log(host, ['Finished shortening URL as [', result.url, '] ',
           (24 - result.throttle).toString(), ' more requests available today'].join(''));
 
-        res.writeHead(201, { 'Content-Type':'application/json'}); // 201 => Created New Item
+        // 201 => Created New Item
+        res.writeHead(201, {
+          'Content-Type':'application/json',
+          'Location': result.url
+        });
         res.end(JSON.stringify({
           url:result.url,
           throttle:result.throttle
@@ -117,6 +122,25 @@ var Kilius = function() {
 
         that.logError(host, JSON.stringify(err), 500);
       });
+    });
+  };
+
+  this.resolveShortenedURL = function(host, userAgent, uri, res) {
+    rs.resolveURL({
+      database: mongo,
+      clientID: host,
+      userAgent: userAgent,
+      uri: uri
+    }, function(destination) {
+      // Redirect to the long link, 307 is temporary redirect, this will allow us to keep statistics on hits
+      res.writeHead(307, {'Location': destination});
+      res.end();
+    }, function(err) {
+      // TODO: Need to return an entire page
+      res.writeHead(500, {'Content-Type': 'application/json'});
+      res.end(JSON.stringify({
+        isErr: true
+      }))
     });
   };
 
@@ -165,6 +189,7 @@ var Kilius = function() {
       var servURL = urlService.parse(req.url),
           path = servURL.pathname,
           host = req.headers.host,
+          userAgent = req.headers['user-agent'],
           verb = req.method;
 
       that.log(host, 'Starting to process request');
@@ -192,6 +217,7 @@ var Kilius = function() {
 
           } else if (path.indexOf('/+') === 0) {
             // Resolve the URL
+            that.resolveShortenedURL(host, userAgent, path, res);
 
           } else {
             that.serveResourceFor(host, '../siteContent/' + path, res);
