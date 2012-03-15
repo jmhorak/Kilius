@@ -10,6 +10,7 @@ var http = require('http'),
     urlService = require('url'),
     sh = require('./node_modules/modShorten/shortenURL.js'),
     rs = require('./node_modules/modResolve/resolveURL.js'),
+    ts = require('./node_modules/modTransform/transformService.js'),
     m = require('mongodb'),
     mongo = null,
     server = null;
@@ -20,6 +21,9 @@ var Kilius = function() {
       doLog = function(collection, payload) {
         collection.insert(payload, {safe: false});
       };
+
+  // Initialize the transformation service
+  ts.init();
 
   // Check for black-listed clients
   this.isBlackListed = function(client) {
@@ -132,15 +136,23 @@ var Kilius = function() {
       userAgent: userAgent,
       uri: uri
     }, function(destination) {
+      that.log(host, ['Resolved ', uri, ' as ', destination].join(''));
       // Redirect to the long link, 307 is temporary redirect, this will allow us to keep statistics on hits
       res.writeHead(307, {'Location': destination});
       res.end();
     }, function(err) {
-      // TODO: Need to return an entire page
-      res.writeHead(500, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({
-        isErr: true
-      }))
+      // Write a log error message and then return our custom error page
+      var payload = "",
+          code = err.code;
+      if (code === 500) {
+        delete err.code;
+        payload = JSON.stringify(err);
+        that.servePageFor(host, '../siteContent/500.html', res);
+      } else {
+        payload = err.logMessage;
+        that.servePageFor(host, '../siteContent/404.html', res);
+      }
+      that.logError(host, payload, code);
     });
   };
 
