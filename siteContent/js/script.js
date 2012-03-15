@@ -52,10 +52,10 @@ $(document).ready(function() {
           li = null,
           ul = null;
 
-      if (oXHR.readyState === 4) {
-        if (oXHR.status === 201) {
-          resp = JSON.parse(oXHR.responseText);
-          li = kilius.createListItem(resp.url, url.value, 7);
+      if (this.readyState === 4) {
+        if (this.status === 201) {
+          resp = JSON.parse(this.responseText);
+          li = kilius.createListItem(this.getResponseHeader('Location'), url.value, 7);
           ul = document.getElementById('shortList');
 
           // Insert as the new first item in the list

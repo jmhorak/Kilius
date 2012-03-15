@@ -8,9 +8,11 @@
 var http = require('http'),
     fs = require('fs'),
     urlService = require('url'),
+    queryString = require('querystring'),
     sh = require('./node_modules/modShorten/shortenURL.js'),
     rs = require('./node_modules/modResolve/resolveURL.js'),
     ts = require('./node_modules/modTransform/transformService.js'),
+    stat = require('./node_modules/modStats/statService.js'),
     m = require('mongodb'),
     mongo = null,
     server = null;
@@ -110,7 +112,6 @@ var Kilius = function() {
           'Location': result.url
         });
         res.end(JSON.stringify({
-          url:result.url,
           throttle:result.throttle
         }));
       }, function (err) {
@@ -155,6 +156,29 @@ var Kilius = function() {
       that.logError(host, payload, code);
     });
   };
+
+  this.buildStatsForUser = function(host, page, response) {
+    stat.linksForUser({
+      database: mongo,
+      clientID: host,
+      page: page
+    }, function(stats) {
+      that.log(host, ['Prepared usage stats for ', host].join(''));
+
+      response.writeHead(200, {'Content-Type': 'application/json'});
+      response.end(JSON.stringify({
+        history: stats
+      }));
+    }, function(err) {
+      response.writeHead(500, {'Content-Type': 'application/json'});
+      response.end(JSON.stringify({
+        message: err.message
+      }));
+
+      delete err.message;
+      that.logError(host, JSON.stringify(err), 500);
+    });
+  }
 
   this.getRequestData = function(request, callback) {
     var data = [];
@@ -230,6 +254,9 @@ var Kilius = function() {
           } else if (path.indexOf('/+') === 0) {
             // Resolve the URL
             that.resolveShortenedURL(host, userAgent, path, res);
+
+          } else if (/^\/[a-zA-Z][0-9a-zA-Z_]{0,31}\/history\/?$/.test(path)) {
+            that.buildStatsForUser(host, parseInt(queryString.parse(servURL.query).page) || 0, res);
 
           } else {
             that.serveResourceFor(host, '../siteContent/' + path, res);
