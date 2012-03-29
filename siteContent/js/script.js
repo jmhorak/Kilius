@@ -30,11 +30,40 @@ var kilius = (function() {
       hits.appendChild(document.createTextNode(h));
 
       return li;
+    },
+
+    fetchUserHistory: function(user, cb) {
+      debugger;
+      var oXHR = new XMLHttpRequest();
+
+      oXHR.open('GET', ['/' + user + '/history'].join(''), true);
+      oXHR.onreadystatechange = function(oEvent) {
+        if (this.readyState === 4) {
+          if (this.status === 200) {
+            cb(JSON.parse(this.responseText).history);
+          }
+        }
+      };
+
+      oXHR.send();
     }
   };
 })();
 
 $(document).ready(function() {
+
+  kilius.fetchUserHistory('k', function(history) {
+    var sl = $('#shortList');
+
+    // Clear the short list container
+    $('#shortList > li').remove();
+
+    // Now push the new history elements into that list
+    for (var idx = 0; idx < history.length; idx++) {
+      sl.appendChild(kilius.createListItem(history.short, history.long, history.hits));
+    }
+  });
+
   // Register the click handler for the submit button
   $('#submit-btn').click(function() {
     var oXHR = new XMLHttpRequest(),
@@ -48,23 +77,20 @@ $(document).ready(function() {
     oXHR.open('POST', '/+/', true);
     oXHR.setRequestHeader('Content-Type', 'application/json');
     oXHR.onreadystatechange = function(oEvent) {
-      var resp = {},
-          li = null,
+      var li = null,
           ul = null;
 
       if (this.readyState === 4) {
         if (this.status === 201) {
-          resp = JSON.parse(this.responseText);
-          li = kilius.createListItem(this.getResponseHeader('Location'), url.value, 7);
+          li = kilius.createListItem(this.getResponseHeader('Location'), url.value, 0);
           ul = document.getElementById('shortList');
 
           // Insert as the new first item in the list
           if (ul && li) {
             ul.insertBefore(li, ul.firstChild);
           }
-
         } else {
-          console.log("Error " + oXHR.status + " " + oXHR.statusText);
+          console.log("Error " + this.status + " " + this.statusText);
         }
       }
     }
