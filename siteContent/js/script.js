@@ -33,7 +33,6 @@ var kilius = (function() {
     },
 
     fetchUserHistory: function(user, cb) {
-      debugger;
       var oXHR = new XMLHttpRequest();
 
       oXHR.open('GET', ['/' + user + '/history'].join(''), true);
@@ -51,7 +50,7 @@ var kilius = (function() {
 })();
 
 $(document).ready(function() {
-
+  console.log('Document is ready, we are going');
   kilius.fetchUserHistory('k', function(history) {
     var sl = $('#shortList');
 
@@ -60,7 +59,7 @@ $(document).ready(function() {
 
     // Now push the new history elements into that list
     for (var idx = 0; idx < history.length; idx++) {
-      sl.appendChild(kilius.createListItem(history.short, history.long, history.hits));
+      sl.append(kilius.createListItem(history[idx].short, history[idx].long, history[idx].hits));
     }
   });
 
