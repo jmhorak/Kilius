@@ -206,7 +206,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 td { vertical-align: top; }
 
 
-/* ==|== primary styles =====================================================
+/* ==== primary styles =====================================================
    Author: Jeff Horak
    ========================================================================== */
 
@@ -222,13 +222,13 @@ div#banner {
    background-color: #1F608D;
    z-index: -1;
    height: 20em;
-   /*width: 650px;*/
    width: 50em;
    position: absolute;
    top: 7em;
    margin: 0 -325px;
    left: 50%;
    border-radius: 20px;
+   display: none;
 }
 
 span#bigK {
@@ -236,8 +236,7 @@ span#bigK {
    position: relative;
    left: 0.18em;
    top: 0.37em;
-   text-shadow: -3px -3px 4px black;
-   color: #202020;
+   z-index: 10;
 }
 
 h1#logo {
@@ -248,7 +247,18 @@ h1#logo {
    left: -2em;
    font: bold 6.0em 'Open Sans', sans-serif;
    text-shadow: -3px -3px 4px black;
+   -webkit-transition: color 1150ms;
+   -moz-transition: color 1150ms;
+   -o-transition: color 1150ms;
+   -ms-transition: color 1150ms;
+}
+
+h1.toBlack {
    color: #202020;
+}
+
+h1.fromWhite {
+   color: #1F608D;
 }
 
 div#main {
@@ -264,6 +274,7 @@ div#main {
    border-radius: 15px;
    text-align: center;
    border: solid 5px gray;
+   display: none;
 }
 
 form.content {
@@ -291,7 +302,6 @@ a#submit-btn {
    left: -4px;
    position: relative;
    padding: 11px 15px;
-   /*color: #6C8CD5;*/
    color: #72A4C7;
    background-image: linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
    background-image: -o-linear-gradient(bottom, #2C506A 0%, #1F608D 100% );
@@ -375,6 +385,7 @@ div#userShortenedList {
    background-color: white;
    width: 28em;
    margin: 0 auto;
+   display: none;
 }
 
 div#listHeader {
@@ -435,6 +446,7 @@ span.copyLink {
 a.shortLink {
    text-overflow: ellipsis;
    overflow: hidden;
+   margin-left: 5px;
 }
 
 a.longLink {
@@ -456,8 +468,10 @@ span.hitCount {
 
 footer {
    position: absolute;
-   bottom: 10px;
+   bottom: 0;
+   padding-bottom: 10px;
    width: 100%;
+   background-color: #1F1F1F;
 }
 
 div.copyright {

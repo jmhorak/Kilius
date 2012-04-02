@@ -51,9 +51,7 @@ var Kilius = function() {
   this.serveResourceFor = function(client, resource, response) {
     fs.readFile(resource, function(err, fd) {
       if (err) {
-        that.logError(client, ['Invalid resource ', resource, ' requested'].join(''), 404);
-        response.writeHead(404); // 404 => Not Found
-        response.end();
+        that.handleInvalidResource(client, resource, response, err);
       } else {
         that.log(client, 'Served ' + resource);
         switch (true) {
@@ -195,6 +193,12 @@ var Kilius = function() {
     res.end();
   };
 
+  this.handleInvalidResource = function(client, resource, response, err) {
+    that.logError(client, ['Invalid resource ', resource, ' requested: ', JSON.stringify(err)].join(''), 404);
+    response.writeHead(404); // 404 => Not Found
+    response.end();
+  }
+
   this.handleUnsupportedRequest = function(host, verb, path, res) {
     that.logError(host, [verb, ' for ', path, ' not implemented'].join(''), 501);
     res.writeHead(405); // 405 => Method not allowed
@@ -238,6 +242,12 @@ var Kilius = function() {
 
       if (path.charAt(0) === ':') {
         path.substring(1);
+      }
+
+      if (/\.\./.test(path)) {
+        // Stay within the site content subdirectory
+        that.handleInvalidResource(host, path, res);
+        return;
       }
 
       // TODO: Add other services (login, track)

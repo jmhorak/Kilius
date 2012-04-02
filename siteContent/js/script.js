@@ -2,6 +2,14 @@
 */
 
 var kilius = (function() {
+  var hasListItems = false,
+      initAnimFinished = false,
+      showUserHistory = function() {
+        if (hasListItems && initAnimFinished) {
+          $('div#userShortenedList').slideDown(200);
+        }
+      };
+
   return {
     createListItem: function(sLink, lLink, h) {
       var li = document.createElement('li'),
@@ -45,12 +53,22 @@ var kilius = (function() {
       };
 
       oXHR.send();
+    },
+
+    onAnimationFinished: function() {
+      initAnimFinished = true;
+      showUserHistory();
+    },
+
+    onUserHistoryBuilt: function() {
+      hasListItems = true;
+      showUserHistory();
     }
   };
 })();
 
 $(document).ready(function() {
-  console.log('Document is ready, we are going');
+
   kilius.fetchUserHistory('k', function(history) {
     var sl = $('#shortList');
 
@@ -60,6 +78,10 @@ $(document).ready(function() {
     // Now push the new history elements into that list
     for (var idx = 0; idx < history.length; idx++) {
       sl.append(kilius.createListItem(history[idx].short, history[idx].long, history[idx].hits));
+    }
+
+    if (history.length > 0) {
+      kilius.onUserHistoryBuilt();
     }
   });
 
@@ -87,6 +109,7 @@ $(document).ready(function() {
           // Insert as the new first item in the list
           if (ul && li) {
             ul.insertBefore(li, ul.firstChild);
+            kilius.onUserHistoryBuilt();
           }
         } else {
           console.log("Error " + this.status + " " + this.statusText);
@@ -96,4 +119,11 @@ $(document).ready(function() {
 
     oXHR.send(JSON.stringify({ url: url.value }));
   });
+
+  setTimeout(function() {
+    document.querySelector('h1#logo').className = 'toBlack';
+    $('#main, #banner').fadeIn(1150, function() {
+      kilius.onAnimationFinished();
+    });
+  }, 400);
 });
