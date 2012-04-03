@@ -488,6 +488,23 @@ a#blogLink:hover {
    color: #6C8CD5;
 }
 
+section.err {
+   background-color: #E0281B;
+   margin-bottom: 10px;
+   -webkit-box-shadow: 0 2px 0 #B50C00;
+   -moz-box-shadow: 0 2px 0 #B50C00;
+   -o-box-shadow: 0 2px 0 #B50C00;
+   -ms-box-shadow: 0 2px 0 #B50C00;
+   box-shadow: 0 2px 0 #B50C00;
+   -webkit-border-radius: 5px;
+   -moz-border-radius: 5px;
+   -o-border-radius: 5px;
+   -ms-border-radius: 5px;
+   border-radius: 5px;
+   height: 1.5em;
+   line-height: 1.5em;
+}
+
 /* ==|== non-semantic helper classes ========================================
    Please define your styles before this section.
    ========================================================================== */

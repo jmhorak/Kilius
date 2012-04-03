@@ -63,6 +63,22 @@ var kilius = (function() {
     onUserHistoryBuilt: function() {
       hasListItems = true;
       showUserHistory();
+    },
+
+    onError: function(message) {
+      // If no message provided, use the default
+      if (kilius.empty(message)) {
+        message = 'An error occurred';
+      } 
+      $('section.err').text(message).addClass('showError');
+    },
+
+    dismissError: function() {
+      $('section.err').removeClass('showError');
+    },
+
+    empty: function(x) {
+      return x === '' || x === undefined || x === null;
     }
   };
 })();
@@ -92,6 +108,13 @@ $(document).ready(function() {
 
     if (url.checkValidity && !url.checkValidity()) {
       // Bad URL
+      kilius.onError('Enter a valid URL');
+      return;
+    }
+
+    if (kilius.empty(url.value)) {
+      // No URL
+      kilius.onError('Enter a valid URL');
       return;
     }
 
@@ -103,6 +126,7 @@ $(document).ready(function() {
 
       if (this.readyState === 4) {
         if (this.status === 201) {
+          // TODO: Check return MIME type
           li = kilius.createListItem(this.getResponseHeader('Location'), url.value, 0);
           ul = document.getElementById('shortList');
 
@@ -112,7 +136,7 @@ $(document).ready(function() {
             kilius.onUserHistoryBuilt();
           }
         } else {
-          console.log("Error " + this.status + " " + this.statusText);
+          kilius.onError(JSON.parse(this.responseText).message);
         }
       }
     }

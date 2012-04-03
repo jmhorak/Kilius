@@ -113,11 +113,9 @@ var Kilius = function() {
           throttle:result.throttle
         }));
       }, function (err) {
-        res.writeHead(500, { 'Content-Type':'application/json'});
+        res.writeHead(err.statusCode || 500, { 'Content-Type':'application/json'});
         res.end(JSON.stringify({
-          isErr:true,
-          errCode:err.code,
-          errMessage:err.clientMessage
+          message:err.clientMessage
         }));
 
         // Remove the client information before writing to the error log
@@ -233,6 +231,8 @@ var Kilius = function() {
           verb = req.method;
 
       that.log(host, 'Starting to process request');
+
+      // TODO: Check Content-Type
 
       if (that.isBlackListed(host)) {
         // This user is not allowed
