@@ -39,34 +39,39 @@
 
   <div id="container">
     <header>
-       <div id="banner"></div>
-       <h1 id="logo" class="fromWhite">
-          <span id="bigK">K</span>
+      <h1 id="logo" class="fromWhite">
+        <span id="bigK">K</span>
           ili.us
-       </h1>
-       <div id="userAddress"></div>
+      </h1>
+      <div id="userAddress"></div>
     </header>
-    <div id="main" role="main">
-       <section class="err">Some error</section>
-       <form class="content">
-         <input type="url" placeholder="Enter a URL" id="url-input" maxlength="2048">
-         <a href="#" class="siteBtn" id="submit-btn">
-           Shorten
-         </a>
-       </form>
+    <div id="main" role="main" class="fadeOut">
+      <section class="err hidden"></section>
+      <form class="content">
+        <input type="url" placeholder="Enter a URL" id="url-input" maxlength="2048">
+        <a href="#" class="siteBtn" id="submit-btn">
+          Shorten
+        </a>
+      </form>
     </div>
-    <div id="userShortenedList">
-       <div id="listHeader" class="clearfix">
-          <strong id="shortLinkHead">Short Link</strong>
-          <strong id="longLinkHead">Link</strong>
-          <strong id="linkHitsHead">Hits</strong>
+    <div class="banner-plus-table">
+      <div id="banner" class="fadeOut"></div>
+      <div class='link-table-container fromTop'>
+        <table summary="Links created by you" class='link-history-table hidden'>
+          <thead class="table-header">
+          <tr>
+          <th class='copy-header'>
+          <th class='short-link-header'>Short Link
+          <th class='long-link-header'>Link
+          <th class='right-align'>Hits
+          <tbody class="link-history">
+        </table>
        </div>
-       <ul id="shortList"></ul>
     </div>
     <footer>
-       <div class="copyright">
-          Made by <a class="siteBtn" id="blogLink" href="http://jeffhorak.com">Jeff Horak</a> in 2012
-       </div>
+      <div class="copyright">
+        Made by <a class="siteBtn" id="blogLink" href="http://jeffhorak.com">Jeff Horak</a> in 2012
+      </div>
     </footer>
   </div> <!--! end of #container -->
 
@@ -81,6 +86,7 @@
 
   <!-- scripts concatenated and minified via ant build script-->
   <script defer src="js/plugins.js"></script>
+  <script defer src="js/libs/ZeroClipboard.js"></script>
   <script defer src="js/script.js"></script>
   <!-- end scripts-->
 

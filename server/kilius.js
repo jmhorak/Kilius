@@ -71,6 +71,10 @@ var Kilius = function() {
             response.writeHead(200, { 'Content-Type': 'image/x-icon' });
             break;
 
+          case /\.swf$/i.test(resource):
+            response.writeHead(200, { 'Content-Type': 'application/x-shockwave-flash'});
+            break;
+
           default:
             response.writeHead(200);
             break;
@@ -97,7 +101,7 @@ var Kilius = function() {
   };
 
   this.createShortenedURL = function(host, req, res) {
-    that.getRequestData(req, function (data) {
+    that.getRequestData(req, res, function (data) {
       data.database = mongo;
       data.clientID = host;
       sh.shorten(data, function (result) {
@@ -176,12 +180,18 @@ var Kilius = function() {
     });
   }
 
-  this.getRequestData = function(request, callback) {
+  this.getRequestData = function(request, response, callback) {
     var data = [];
     request.on('data', function(chunk) {
       data.push(chunk);
     }).on('end', function() {
-      callback(JSON.parse(data));
+      try {
+        callback(JSON.parse(data));
+      } catch(e) {
+        that.logError('Kilius Server', 'getRequestData: Exception thrown: ' + e.toString(), 400);
+        response.writeHead(400); // 400 => Bad client request
+        response.end();
+      }
     });
   };
 

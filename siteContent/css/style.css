@@ -218,17 +218,24 @@ div#container {
 
 }
 
-div#banner {
-   background-color: #1F608D;
-   z-index: -1;
-   height: 20em;
-   width: 50em;
+div.banner-plus-table {
    position: absolute;
    top: 7em;
-   margin: 0 -325px;
    left: 50%;
+   margin: 0 -325px;
+   z-index: -1;
+}
+
+div#banner {
+   background-color: #1F608D;
+   height: 20em;
+   width: 50em;
+   position: relative;
    border-radius: 20px;
-   display: none;
+   -webkit-transition: opacity 1150ms;
+   -moz-transition: opacity 1150ms;
+   -o-transition: opacity 1150ms;
+   -ms-transition: opacity 1150ms;
 }
 
 span#bigK {
@@ -274,7 +281,18 @@ div#main {
    border-radius: 15px;
    text-align: center;
    border: solid 5px gray;
-   display: none;
+   -webkit-transition: opacity 1150ms;
+   -moz-transition: opacity 1150ms;
+   -o-transition: opacity 1150ms;
+   -ms-transition: opacity 1150ms;
+}
+
+.fadeIn {
+   opacity: 1;
+}
+
+.fadeOut {
+   opacity: 0;
 }
 
 form.content {
@@ -378,92 +396,100 @@ a.siteBtn {
    color: white;
 }
 
-div#userShortenedList {
+.link-history-table {
    font: 1.75em 'Open Sans', sans-serif;
-   top: 2em;
-   position: relative;
-   background-color: white;
+   background-color: #353535;
    width: 28em;
    margin: 0 auto;
-   display: none;
+   -moz-border-radius: 10px;
+   -webkit-border-radius: 10px;
+   -ms-border-radius: 10px;
+   -o-border-radius: 10px;
+   border-radius: 10px;
+   table-layout: fixed;
 }
 
-div#listHeader {
-   background-color: gray;
-   margin: 0 4px;
-   font: 0.75em 'Open Sans', sans-serif;
-   text-indent: 5px;
+.link-table-container {
+   color: white;
+   position: relative;
+   -webkit-transition: top 400ms;
+   -moz-transition: top 400ms;
+   -o-transition: top 400ms;
+   -ms-transition: top 400ms;
+   margin-top: 1em;
 }
 
-strong#shortLinkHead {
-   width: 14em;
-   float: left;
-   text-indent: 3.3em;
+.fromTop {
+   top: -4em;
+   z-index: -10;
 }
 
-strong#longLinkHead {
-   width: 18em;
-   float: left;
+.toBottom {
+   top: 0;
+   z-index: 0;
 }
 
-strong#linkHitsHead {
-   width: 4em;
-   float: right;
+th {
+   text-align: left;
+   padding: 3px 5px;
+}
+
+.copy-header {
+   width: 2.5em;
+}
+
+.short-link-header {
+   width: 7em;
+}
+
+.long-link-header {
+   width: 23em;
+}
+
+.right-align {
    text-align: right;
-   padding-right: 5px;
 }
 
-ul#shortList {
-   list-style-type: none;
-   margin: 0;
-   padding: 0;
-   text-indent: 5px;
+.table-header {
+   font: 0.8em sans-serif;
+   color: #1F608D;
+   text-shadow: 1px 1px #101010;
+}
+
+.link-history {
    font-size: 0.75em;
+   background-color: #454545;
 }
 
-li.historyLink {
-   border-bottom: 1px solid #1F608D;
-   line-height: 2.2em;
-   height: 2.2em;
+.copy-cell {
+   position: relative;
 }
 
-li.historyLink.firstLink {
-   border-bottom: none;
+tr.new {
+   background-color: #555;
 }
 
-div.shortContainer {
-   display: inline;
-   width: 14em;
-   float: left;
+td {
+   padding: 3px 5px;
+   color: gray;
 }
 
-span.copyLink {
-   border-right: 1px solid black;
-   padding-right: 5px;
-   padding-left: 5px;
-}
-
-a.shortLink {
+.short-link-cell {
    text-overflow: ellipsis;
-   overflow: hidden;
-   margin-left: 5px;
 }
 
-a.longLink {
-   float: left;
-   width: 18em;
-   padding-right: 5px;
+.long-link-cell {
    text-overflow: ellipsis;
-   overflow: hidden;
 }
 
-span.hitCount {
-   float: right;
-   text-align: right;
-   width: 4em;
-   text-overflow: ellipsis;
-   overflow: hidden;
-   padding-right: 10px;
+a.table-link {
+   color: #5397C7;
+   text-decoration: none;
+}
+
+a.table-link:hover {
+   color: #5C1611;
+   text-decoration: underline;
 }
 
 footer {
@@ -501,7 +527,7 @@ section.err {
    -o-border-radius: 5px;
    -ms-border-radius: 5px;
    border-radius: 5px;
-   height: 1.5em;
+   padding: 0.3em;
    line-height: 1.5em;
 }
 

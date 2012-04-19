@@ -1,153 +1,320 @@
 /* Author: Jeff Horak
 */
 
-var kilius = (function() {
-  var hasListItems = false,
-      initAnimFinished = false,
-      showUserHistory = function() {
-        if (hasListItems && initAnimFinished) {
-          $('div#userShortenedList').slideDown(200);
-        }
-      };
+/**
+ * A user history record
+ *
+ * @param content - Constuctor object for creating the history record
+ */
+var HistoryEntry = function(content) {
+  this.shortLink = content.short;
+  this.longLink = content.long;
+  this.hits = content.hits;
+  this.clip = null;
+  this.copyCell = null;
 
-  return {
-    createListItem: function(sLink, lLink, h) {
-      var li = document.createElement('li'),
-          div = document.createElement('div'),
-          copy = document.createElement('span'),
-          shortLink = document.createElement('a'),
-          longLink = document.createElement('a'),
-          hits = document.createElement('span');
+  this.createRow = function() {
+    // Content elements
+    var copyCellContent = document.createElement('div'),
+        shortLinkContent = document.createElement('a'),
+        longLinkContent = document.createElement('a'),
 
-      li.setAttribute('class', 'historyLink');
-      li.appendChild(div);
-      div.setAttribute('class', 'shortContainer');
-      div.appendChild(copy);
-      copy.setAttribute('class', 'copyLink');
-      copy.appendChild(document.createTextNode('Copy'));
-      div.appendChild(shortLink);
-      shortLink.setAttribute('href', sLink);
-      shortLink.setAttribute('class', 'shortLink');
-      shortLink.appendChild(document.createTextNode(sLink.substring(sLink.indexOf('kili'))));
-      li.appendChild(longLink);
-      longLink.setAttribute('href', lLink);
-      longLink.setAttribute('class', 'longLink');
-      longLink.appendChild(document.createTextNode(lLink));
-      li.appendChild(hits);
-      hits.setAttribute('class', 'hitCount');
-      hits.appendChild(document.createTextNode(h));
+        // Create the cells within the row
+        copyCell = document.createElement('td'),
+        shortLinkCell = document.createElement('td'),
+        longLinkCell = document.createElement('td'),
+        hitsCell = document.createElement('td'),
 
-      return li;
-    },
+        // Create the row within the table
+        row = document.createElement('tr');
 
-    fetchUserHistory: function(user, cb) {
-      var oXHR = new XMLHttpRequest();
+    // Set the data within the Copy cell
+    copyCellContent.textContent = 'Copy';
+    copyCellContent.setAttribute('class', 'copy-cell');
 
-      oXHR.open('GET', ['/' + user + '/history'].join(''), true);
-      oXHR.onreadystatechange = function(oEvent) {
-        if (this.readyState === 4) {
-          if (this.status === 200) {
-            cb(JSON.parse(this.responseText).history);
-          }
-        }
-      };
+    // Set the data within the shortened link cell
+    shortLinkContent.setAttribute('href', this.shortLink);
+    shortLinkContent.setAttribute('class', 'table-link');
+    // Remove the 'http://' from the link
+    shortLinkContent.textContent = this.shortLink.substring(this.shortLink.indexOf('kili'));
 
-      oXHR.send();
-    },
+    // Set the data within the long link cell
+    longLinkContent.setAttribute('href', this.longLink);
+    longLinkContent.setAttribute('class', 'table-link');
+    longLinkContent.textContent = this.longLink;
 
-    onAnimationFinished: function() {
-      initAnimFinished = true;
-      showUserHistory();
-    },
+    // Set the data within the hit cell
+    hitsCell.textContent = this.hits;
+    hitsCell.setAttribute('class', 'right-align');
 
-    onUserHistoryBuilt: function() {
-      hasListItems = true;
-      showUserHistory();
-    },
+    // Add CSS to short and long link cells
+    shortLinkCell.setAttribute('class', 'short-link-cell');
+    longLinkCell.setAttribute('class', 'long-link-cell');
 
-    onError: function(message) {
-      // If no message provided, use the default
-      if (kilius.empty(message)) {
-        message = 'An error occurred';
-      } 
-      $('section.err').text(message).addClass('showError');
-    },
+    // Now create the row
+    copyCell.appendChild(copyCellContent);
+    this.copyCell = copyCell;
+    shortLinkCell.appendChild(shortLinkContent);
+    longLinkCell.appendChild(longLinkContent);
 
-    dismissError: function() {
-      $('section.err').removeClass('showError');
-    },
+    row.appendChild(copyCell);
+    row.appendChild(shortLinkCell);
+    row.appendChild(longLinkCell);
+    row.appendChild(hitsCell);
 
-    empty: function(x) {
-      return x === '' || x === undefined || x === null;
+    return row;
+  };
+
+  this.reposition = function() {
+    var that = this;
+
+    if (!kilius.isEmpty(this.clip)) {
+      this.clip.reposition();
+    } else {
+      // Set up the clipboard
+      this.clip = new ZeroClipboard.Client();
+      this.clip.setText(this.shortLink);
+
+      // Adjust the clipboard item after the DOM has a chance to update
+      setTimeout(function() {
+        that.clip.glue(that.copyCell);
+        that.clip.reposition();
+      }, 0);
     }
   };
+
+  this.destroy = function() {
+    this.clip.destroy();
+  }
+}
+
+var kilius = (function() {
+
+  /**
+   * Fetch the new link and determine if it is valid
+   *
+   * @returns Object { valid: bool, address: the url to post to the server }
+   */
+  var getNewLink = function() {
+    var input = $('#url-input')[0],
+        url = input ? input.value : '',
+        valid = !kilius.isEmpty(url);
+
+    // If the URL HTML-input type is supported, this function will be defined and the browser
+    //   can do some input validation for us
+    if (input.checkValidity) {
+      valid &= input.checkValidity();
+    }
+
+    return {
+      valid: valid,
+      address: url
+    }
+  };
+
+  /**
+   * Show an error message to the user
+   *
+   * @param message {String} The message to display, if empty use a default
+   */
+  var showError = function(message) {
+    // If no message provided, use the default
+    if (kilius.isEmpty(message)) { message = 'An error occurred'; }
+    $('section.err').text(message).removeClass('hidden');
+  };
+
+  /**
+   * Hides the error message
+   */
+  var hideError = function() {
+    $('section.err').addClass('hidden');
+  };
+
+  return {
+
+    init: function() {
+
+      // Only accept JSON from the server
+      $.ajaxSetup({
+        dataType: 'json'
+      });
+
+      // Set ZeroClipboard's path
+      ZeroClipboard.setMoviePath('/flash/ZeroClipboard.swf');
+    },
+
+    // Misc function for determing if something exists
+    isEmpty: function(x) {
+      return x === '' || x === undefined || x === null;
+    },
+
+    comms: (function() {
+      var ajaxRequest = function(request, cb) {
+        $.ajax({
+          url: request.url,
+          type: request.type,
+          data: JSON.stringify(request.data || {}),
+          contentType: 'application/json',
+          processData: false,
+
+          error: function(jqXHR, textStatus, errorThrown) {
+            // Handle error
+            var err = [
+              'The Kili.us server reported a problem: ',
+              textStatus ? textStatus[0].toUpperCase() + textStatus.slice(1) : 'Error',
+              ' - ',
+              errorThrown ? errorThrown : 'General Error'
+            ].join('');
+
+            showError(err);
+          },
+
+          success: cb
+        })
+      };
+
+      return {
+        populateUserHistory: function(user) {
+          ajaxRequest({
+            url: ['/' + user + '/history'].join(''),
+            type: 'GET'
+          }, function(data, textStatus, jqXHR) {
+            var history = kilius.isEmpty(data) ? [] : (data.history || []);
+
+            if (jqXHR.status === 200) {
+              kilius.dom.clearHistoryEntries();
+
+              for (var idx = history.length-1; idx >= 0; idx--) {
+                kilius.dom.insertRow(new HistoryEntry(history[idx]));
+              }
+            } else {
+              showError('The server did not reply to the request in the correct format');
+            }
+          });
+        },
+
+        postNewLink: function(link) {
+          var url = getNewLink();
+
+          if (!url.valid) {
+            // Bad URL
+            showError('Enter a valid URL');
+            return;
+          }
+
+          // Dismiss any existing error message
+          hideError();
+
+          ajaxRequest({
+            url: '/+/',
+            type: 'POST',
+            data: { url: url.address }
+          }, function(data, textStatus, jqXHR) {
+            var entry = null;
+
+            if (jqXHR.status === 201) {
+
+              entry = new HistoryEntry({
+                short: jqXHR.getResponseHeader('Location'),
+                long: url.address,
+                hits: 0
+              });
+
+              kilius.dom.insertRow(entry);
+            } else {
+              showError('The server did not reply to the request in the correct format');
+            }
+          });
+        }
+      }
+    })(),
+
+    dom: (function() {
+      var hasListItems = false,
+          initAnimationFinished = false,
+          historyEntries = [];
+
+      var showTable = function() {
+        if (hasListItems && initAnimationFinished) {
+          $('.link-history-table').removeClass('hidden');
+          $('.link-table-container').removeClass('fromTop').addClass('toBottom');
+
+          setTimeout(function() {updateClipboardElements();}, 400);
+        }
+      },
+      hideTable = function() {
+        $('.link-table-container').removeClass('toBottom').addClass('fromTop');
+        $('.link-history-table').addClass('hidden');
+      },
+      updateClipboardElements = function() {
+        historyEntries.forEach(function(entry) {
+          entry.reposition();
+        })
+      }
+
+      return {
+        insertRow: function(entry) {
+          var tbody = $('.link-history').first(),
+              row = entry ? entry.createRow() : {};
+
+          // Insert the link as the new first item in the list
+          if (!kilius.isEmpty(row) && !kilius.isEmpty(tbody)) {
+            tbody.prepend(row);
+            historyEntries.push(entry);
+
+            hasListItems = true;
+            showTable();
+          }
+        },
+
+        clearHistoryEntries: function(hide) {
+          // Destroy history entries
+          historyEntries.forEach(function(entry) {
+            entry.destroy();
+          });
+
+          // Delete reference
+          historyEntries = [];
+          hasListItems = false;
+
+          // Remove DOM elements
+          $('.link-history > tr').remove();
+
+          // Optionally hide the table
+          if (hide) {
+            hideTable();
+          }
+        },
+
+        doInitialAnimation: function() {
+          setTimeout(function() {
+            // Change the logo color to black
+            $('h1#logo').attr('class','toBlack');
+            $('#main, #banner').attr('class', 'fadeIn');
+
+            setTimeout(function() {
+              $('.link-table-container').removeClass('fromTop').addClass('toBottom');
+              initAnimationFinished = true;
+              showTable();
+            }, 1150);
+
+          }, 400);
+        }
+      }
+    })()
+  }
 })();
 
 $(document).ready(function() {
 
-  kilius.fetchUserHistory('k', function(history) {
-    var sl = $('#shortList');
+  //var kilius = new Kilius();
 
-    // Clear the short list container
-    $('#shortList > li').remove();
+  kilius.init();
+  kilius.comms.populateUserHistory('k');
+  kilius.dom.doInitialAnimation();
 
-    // Now push the new history elements into that list
-    for (var idx = 0; idx < history.length; idx++) {
-      sl.append(kilius.createListItem(history[idx].short, history[idx].long, history[idx].hits));
-    }
-
-    if (history.length > 0) {
-      kilius.onUserHistoryBuilt();
-    }
-  });
-
-  // Register the click handler for the submit button
   $('#submit-btn').click(function() {
-    var oXHR = new XMLHttpRequest(),
-        url = document.getElementById('url-input');
-
-    if (url.checkValidity && !url.checkValidity()) {
-      // Bad URL
-      kilius.onError('Enter a valid URL');
-      return;
-    }
-
-    if (kilius.empty(url.value)) {
-      // No URL
-      kilius.onError('Enter a valid URL');
-      return;
-    }
-
-    oXHR.open('POST', '/+/', true);
-    oXHR.setRequestHeader('Content-Type', 'application/json');
-    oXHR.onreadystatechange = function(oEvent) {
-      var li = null,
-          ul = null;
-
-      if (this.readyState === 4) {
-        if (this.status === 201) {
-          // TODO: Check return MIME type
-          li = kilius.createListItem(this.getResponseHeader('Location'), url.value, 0);
-          ul = document.getElementById('shortList');
-
-          // Insert as the new first item in the list
-          if (ul && li) {
-            ul.insertBefore(li, ul.firstChild);
-            kilius.onUserHistoryBuilt();
-          }
-        } else {
-          kilius.onError(JSON.parse(this.responseText).message);
-        }
-      }
-    }
-
-    oXHR.send(JSON.stringify({ url: url.value }));
+    kilius.comms.postNewLink();
   });
 
-  setTimeout(function() {
-    document.querySelector('h1#logo').className = 'toBlack';
-    $('#main, #banner').fadeIn(1150, function() {
-      kilius.onAnimationFinished();
-    });
-  }, 400);
 });
