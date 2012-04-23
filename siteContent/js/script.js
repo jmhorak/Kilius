@@ -1,6 +1,15 @@
 /* Author: Jeff Horak
 */
 
+// Add forEach to older browsers
+Array.prototype.forEach = Array.prototype.forEach || function(callback, thisArg) {
+  for (var idx = 0, len = this.length; idx < len; idx++) {
+    if (thisArg) {
+      callback.call(thisArg, this[idx]);
+    }
+  }
+};
+
 /**
  * A user history record
  *
@@ -84,7 +93,7 @@ var HistoryEntry = function(content) {
   };
 
   this.destroy = function() {
-    this.clip.destroy();
+    if (this.clip) this.clip.destroy();
   }
 }
 
@@ -95,7 +104,7 @@ var kilius = (function() {
    *
    * @returns Object { valid: bool, address: the url to post to the server }
    */
-  var getNewLink = function() {
+  function getNewLink() {
     var input = $('#url-input')[0],
         url = input ? input.value : '',
         valid = !kilius.isEmpty(url);
@@ -112,12 +121,16 @@ var kilius = (function() {
     }
   };
 
+  function clearLink() {
+    $('#url-input').val('');
+  };
+
   /**
    * Show an error message to the user
    *
    * @param message {String} The message to display, if empty use a default
    */
-  var showError = function(message) {
+  function showError(message) {
     // If no message provided, use the default
     if (kilius.isEmpty(message)) { message = 'An error occurred'; }
     $('section.err').text(message).removeClass('hidden');
@@ -126,7 +139,7 @@ var kilius = (function() {
   /**
    * Hides the error message
    */
-  var hideError = function() {
+  function hideError() {
     $('section.err').addClass('hidden');
   };
 
@@ -134,13 +147,17 @@ var kilius = (function() {
 
     init: function() {
 
-      // Only accept JSON from the server
-      $.ajaxSetup({
-        dataType: 'json'
-      });
-
       // Set ZeroClipboard's path
       ZeroClipboard.setMoviePath('/flash/ZeroClipboard.swf');
+
+      // Initialize all sub-components
+      kilius.comms.init();
+      kilius.dom.init();
+    },
+
+    populateHistoryForCurrentUser: function() {
+      // TODO: Provide an actual user
+      kilius.comms.populateUserHistory('k');
     },
 
     // Misc function for determing if something exists
@@ -149,7 +166,7 @@ var kilius = (function() {
     },
 
     comms: (function() {
-      var ajaxRequest = function(request, cb) {
+      function ajaxRequest(request, cb) {
         $.ajax({
           url: request.url,
           type: request.type,
@@ -174,6 +191,13 @@ var kilius = (function() {
       };
 
       return {
+        init: function() {
+          // Only accept JSON from the server
+          $.ajaxSetup({
+            dataType: 'json'
+          });
+        },
+
         populateUserHistory: function(user) {
           ajaxRequest({
             url: ['/' + user + '/history'].join(''),
@@ -193,7 +217,7 @@ var kilius = (function() {
           });
         },
 
-        postNewLink: function(link) {
+        postNewLink: function() {
           var url = getNewLink();
 
           if (!url.valid) {
@@ -221,6 +245,7 @@ var kilius = (function() {
               });
 
               kilius.dom.insertRow(entry);
+              clearLink();
             } else {
               showError('The server did not reply to the request in the correct format');
             }
@@ -231,39 +256,98 @@ var kilius = (function() {
 
     dom: (function() {
       var hasListItems = false,
-          initAnimationFinished = false,
+          showTable = false,
+          showRowItems = false,
+          supportAnimations = false,
           historyEntries = [];
 
-      var showTable = function() {
-        if (hasListItems && initAnimationFinished) {
+      function displayTable() {
+        if (hasListItems && showTable) {
           $('.link-history-table').removeClass('hidden');
-          $('.link-table-container').removeClass('fromTop').addClass('toBottom');
-
-          setTimeout(function() {updateClipboardElements();}, 400);
+          $('.link-table-container').removeClass('fadeOut fromTop').addClass('fadeIn toBottom');
         }
-      },
-      hideTable = function() {
-        $('.link-table-container').removeClass('toBottom').addClass('fromTop');
-        $('.link-history-table').addClass('hidden');
-      },
-      updateClipboardElements = function() {
+      };
+      function hideTable() {
+        $('.link-table-container').removeClass('toBottom fadeIn').addClass('fromTop fadeOut');
+        $('.link-history-table').removeClass('hidden');
+      };
+      function updateClipboardElements() {
         historyEntries.forEach(function(entry) {
           entry.reposition();
         })
-      }
+      };
 
       return {
+        init: function() {
+          // Setup some event handlers
+          $('#submit-btn').click(kilius.comms.postNewLink);
+          $('form.content').submit(function() {
+            kilius.comms.postNewLink();
+            return false; // Don't acutally do a submit
+          });
+
+          $(window).resize(updateClipboardElements);
+
+          supportAnimations = $('html').hasClass('cssanimations');
+
+          function onLogoAnimationFinished() {
+            showTable = true;
+            displayTable();
+          };
+
+          var onTableAnimationFinished = function() {
+            showRowItems = true;
+            //$('tbody').removeClass('hidden');
+
+            // Hack, animation is blown away when tbody updates from being hidden
+            setTimeout(function() {
+              $('tbody tr').removeClass('fadeOut').addClass('fadeIn');
+
+              // Add the flash overlays
+              updateClipboardElements();
+            }, 0);
+          };
+
+          $('#banner').bind('webkitTransitionEnd transitionend MSTransitionEnd oTransitionEnd', onLogoAnimationFinished);
+          $('.link-table-container').bind('webkitTransitionEnd transitionend MSTransitionEnd oTransitionEnd', function(evt) {
+            if (evt.srcElement === this) onTableAnimationFinished();
+          });
+
+
+          // Start the initial animation - change the logo color to black and fade in the controls
+          $('h1#logo').attr('class','toBlack');
+          $('#main, #banner').attr('class', 'fadeIn');
+
+          if (!supportAnimations) {
+            // CSS Animations aren't supported, just skip the fluff and get to the end state
+            onLogoAnimationFinished();
+            onTableAnimationFinished();
+          }
+        },
+
         insertRow: function(entry) {
           var tbody = $('.link-history').first(),
-              row = entry ? entry.createRow() : {};
+              row = entry ? entry.createRow() : {},
+              rowClass = row.getAttribute('class');
 
           // Insert the link as the new first item in the list
           if (!kilius.isEmpty(row) && !kilius.isEmpty(tbody)) {
+
+            // Normalize the rowClass to an empty string or the existing class plus a space
+            if (kilius.isEmpty(rowClass)) { rowClass = ''; } else { rowClass += ' '; }
+
+            // If not showing row items yet, add the fadeOut class to the row, otherwise fadeIn
+            row.setAttribute('class', rowClass + (showRowItems ? 'fadeIn' :'fadeOut'));
+
             tbody.prepend(row);
             historyEntries.push(entry);
 
             hasListItems = true;
-            showTable();
+            displayTable();
+
+            if (showRowItems) {
+              updateClipboardElements();
+            }
           }
         },
 
@@ -284,21 +368,6 @@ var kilius = (function() {
           if (hide) {
             hideTable();
           }
-        },
-
-        doInitialAnimation: function() {
-          setTimeout(function() {
-            // Change the logo color to black
-            $('h1#logo').attr('class','toBlack');
-            $('#main, #banner').attr('class', 'fadeIn');
-
-            setTimeout(function() {
-              $('.link-table-container').removeClass('fromTop').addClass('toBottom');
-              initAnimationFinished = true;
-              showTable();
-            }, 1150);
-
-          }, 400);
         }
       }
     })()
@@ -306,15 +375,6 @@ var kilius = (function() {
 })();
 
 $(document).ready(function() {
-
-  //var kilius = new Kilius();
-
   kilius.init();
-  kilius.comms.populateUserHistory('k');
-  kilius.dom.doInitialAnimation();
-
-  $('#submit-btn').click(function() {
-    kilius.comms.postNewLink();
-  });
-
+  kilius.populateHistoryForCurrentUser();
 });

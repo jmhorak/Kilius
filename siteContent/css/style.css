@@ -232,10 +232,10 @@ div#banner {
    width: 50em;
    position: relative;
    border-radius: 20px;
-   -webkit-transition: opacity 1150ms;
-   -moz-transition: opacity 1150ms;
-   -o-transition: opacity 1150ms;
-   -ms-transition: opacity 1150ms;
+   -webkit-transition: opacity 350ms linear 600ms;
+   -moz-transition: opacity 1150ms linear 400ms;
+   -o-transition: opacity 1150ms linear 400ms;
+   -ms-transition: opacity 1150ms linear 400ms;
 }
 
 span#bigK {
@@ -254,10 +254,10 @@ h1#logo {
    left: -2em;
    font: bold 6.0em 'Open Sans', sans-serif;
    text-shadow: -3px -3px 4px black;
-   -webkit-transition: color 1150ms;
-   -moz-transition: color 1150ms;
-   -o-transition: color 1150ms;
-   -ms-transition: color 1150ms;
+   -webkit-transition: color 350ms linear 600ms;
+   -moz-transition: color 1150ms linear 400ms;
+   -o-transition: color 1150ms linear 400ms;
+   -ms-transition: color 1150ms linear 400ms;
 }
 
 h1.toBlack {
@@ -281,10 +281,10 @@ div#main {
    border-radius: 15px;
    text-align: center;
    border: solid 5px gray;
-   -webkit-transition: opacity 1150ms;
-   -moz-transition: opacity 1150ms;
-   -o-transition: opacity 1150ms;
-   -ms-transition: opacity 1150ms;
+   -webkit-transition: opacity 350ms linear 600ms;
+   -moz-transition: opacity 1150ms linear 400ms;
+   -o-transition: opacity 1150ms linear 400ms;
+   -ms-transition: opacity 1150ms linear 400ms;
 }
 
 .fadeIn {
@@ -412,21 +412,21 @@ a.siteBtn {
 .link-table-container {
    color: white;
    position: relative;
-   -webkit-transition: top 400ms;
-   -moz-transition: top 400ms;
-   -o-transition: top 400ms;
-   -ms-transition: top 400ms;
+   -webkit-transition: opacity 400ms linear, top 400ms ease-out;
+   -moz-transition: opacity 300ms linear;
+   -o-transition: opacity 300ms linear;
+   -ms-transition: opacity 300ms linear;
    margin-top: 1em;
 }
 
 .fromTop {
-   top: -4em;
-   z-index: -10;
+   top: -6em;
+   /*z-index: -10;*/
 }
 
 .toBottom {
    top: 0;
-   z-index: 0;
+   /*z-index: 0;*/
 }
 
 th {
@@ -467,6 +467,13 @@ th {
 
 tr.new {
    background-color: #555;
+}
+
+tbody tr {
+   -webkit-transition: opacity 250ms linear 200ms;
+   -moz-transition: opacity 250ms linear;
+   -o-transition: opacity 250ms linear;
+   -ms-transition: opacity 250ms linear;
 }
 
 td {
