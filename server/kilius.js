@@ -32,72 +32,64 @@ var Kilius = function() {
     return !!blackList[client];
   };
 
-  // Serve HTML
-  this.servePageFor = function(client, page, response) {
-    fs.readFile(page, function(err, fd) {
-      if (err) {
-        that.logError(client, 'Could not load ' + page, 503);
-        response.writeHead(503); // 503 => Service temporarily unavailable
-        response.end();
+  this.serveResource = function(resource, errorCallback, successCallback) {
+    fs.stat(resource, function(err, stats) {
+
+      // Only handle files
+      if (err || !stats.isFile()) {
+        errorCallback(err);
       } else {
-        // Write the page to the response stream
-        that.log(client, 'Served ' + page);
-        response.writeHead(200);
-        response.end(fd);
-      }
-    })
-  };
 
-  this.serveResourceFor = function(client, resource, response) {
-    fs.readFile(resource, function(err, fd) {
-      if (err) {
-        that.handleInvalidResource(client, resource, response, err);
-      } else {
-        that.log(client, 'Served ' + resource);
-        switch (true) {
-          case /\.css$/i.test(resource):
-            response.writeHead(200, { 'Content-Type': 'text/css' });
-            break;
-
-          case /\.html?$/i.test(resource):
-            response.writeHead(200, { 'Content-Type': 'text/html' });
-            break;
-
-          case /\.js$/i.test(resource):
-            response.writeHead(200, { 'Content-Type': 'text/javascript' });
-            break;
-
-          case /\.ico$/i.test(resource):
-            response.writeHead(200, { 'Content-Type': 'image/x-icon' });
-            break;
-
-          case /\.swf$/i.test(resource):
-            response.writeHead(200, { 'Content-Type': 'application/x-shockwave-flash'});
-            break;
-
-          default:
-            response.writeHead(200);
-            break;
-        }
-        response.end(fd);
+        // Read the file from disk and write to the response object
+        fs.readFile(resource, function(err, fd) {
+          if (err) {
+            errorCallback(err);
+          } else {
+            successCallback(fd, stats);
+          }
+        });
       }
     });
   };
 
-  this.serveFavIconFor = function(client, path, response) {
-    fs.readFile(path, function(err, fd) {
-      if (err) {
-        // This isn't a terrible problem, we'll just return nothing
-        that.logError(client, 'Could not load the favicon');
-        response.writeHead(200);
-        response.end();
-      } else {
-        // Return with the correct MIME type
-        that.log(client, "Served fav icon");
-        response.writeHead(200, {'Content-Type': 'image/x-icon'});
-        response.end(fd);
-      }
-    })
+  this.writeResponseForFile = function(context) {
+    var resource = context.resource,
+        response = context.response;
+
+    that.log(context.host, 'Served ' + resource);
+
+    switch (true) {
+      case /\.css$/i.test(resource):
+        response.setHeader('Content-Type', 'text/css');
+        break;
+
+      case /\.html?$/i.test(resource):
+        response.setHeader('Content-Type', 'text/html');
+        break;
+
+      case /\.js$/i.test(resource):
+        response.setHeader('Content-Type', 'text/javascript');
+        break;
+
+      case /\.ico$/i.test(resource):
+        response.setHeader('Content-Type', 'image/x-icon');
+        break;
+
+      case /\.swf$/i.test(resource):
+        response.setHeader('Content-Type', 'application/x-shockwave-flash');
+        break;
+
+      default:
+        break;
+    }
+
+    // Miscellaneous headers
+    response.statusCode = 200;
+    response.setHeader('Cache-Control', 'public, max-age=604800'); // Cache for one week
+    response.setHeader('Content-Length', +context.stats.size);
+    response.setHeader('Last-Modified', context.stats.mtime.toUTCString());
+
+    response.end(context.fd);
   };
 
   this.createShortenedURL = function(host, req, res) {
@@ -144,15 +136,37 @@ var Kilius = function() {
     }, function(err) {
       // Write a log error message and then return our custom error page
       var payload = "",
-          code = err.code;
+          code = err.code,
+          resource = '';
+
       if (code === 500) {
         delete err.code;
         payload = JSON.stringify(err);
-        that.servePageFor(host, '../siteContent/500.html', res);
+        resource = '../siteContent/500.html';
       } else {
         payload = err.logMessage;
-        that.servePageFor(host, '../siteContent/404.html', res);
+        resource = '../siteContent/404.html';
+
+        that.serveResource(resource,
+          function(err) {
+            that.handlePageLoadError({
+              host: host,
+              page: resource,
+              res: res
+            })
+          },
+          function(fd, stats) {
+            that.writeResponseForFile({
+              fd: fd,
+              host: host,
+              resource: resource,
+              response: res,
+              stats: stats
+            })
+          }
+        );
       }
+
       that.logError(host, payload, code);
     });
   };
@@ -163,17 +177,22 @@ var Kilius = function() {
       clientID: host,
       page: page
     }, function(stats) {
+
+      var jsonString = JSON.stringify({
+        history: stats
+      });
       that.log(host, ['Prepared usage stats for ', host].join(''));
 
-      response.writeHead(200, {'Content-Type': 'application/json'});
-      response.end(JSON.stringify({
-        history: stats
-      }));
+      response.writeHead(200, {'Content-Type': 'application/json', 'Content-Length': +Buffer.byteLength(jsonString)});
+      response.end(jsonString);
     }, function(err) {
-      response.writeHead(500, {'Content-Type': 'application/json'});
-      response.end(JSON.stringify({
+
+      var jsonString = JSON.stringify({
         message: err.message
-      }));
+      });
+
+      response.writeHead(500, {'Content-Type': 'application/json', 'Content-Length': +Buffer.byteLength(jsonString)});
+      response.end(jsonString);
 
       delete err.message;
       that.logError(host, JSON.stringify(err), 500);
@@ -193,6 +212,12 @@ var Kilius = function() {
         response.end();
       }
     });
+  };
+
+  this.handlePageLoadError = function(context) {
+    that.logError(context.host, 'Could not load ' + context.page, 503);
+    context.res.writeHead(503); // 503 => Service temporarily unavailable
+    context.res.end();
   };
 
   this.handleBlackListConnected = function(host, res) {
@@ -238,11 +263,13 @@ var Kilius = function() {
           path = servURL.pathname,
           host = req.headers.host,
           userAgent = req.headers['user-agent'],
-          verb = req.method;
+          contentType = req.headers['content-type'],
+          verb = req.method,
+          resource = '';
 
       that.log(host, 'Starting to process request');
 
-      // TODO: Check Content-Type
+
 
       if (that.isBlackListed(host)) {
         // This user is not allowed
@@ -265,12 +292,25 @@ var Kilius = function() {
         case 'GET':
           if (path === '/') {
             // Requesting the index.html page
-            that.servePageFor(host, '../siteContent/index.html', res);
-
-          } else if (path === '/favicon.ico') {
-            // Requesting the favicon for our page
-            that.serveFavIconFor(host, '../siteContent/favicon.ico', res);
-
+            resource = '../siteContent/index.html';
+            that.serveResource(resource,
+              function(err) {
+                that.handlePageLoadError({
+                  host: host,
+                  page: resource,
+                  res: res
+                });
+              },
+              function(fd, stats) {
+                that.writeResponseForFile({
+                  fd: fd,
+                  host: host,
+                  resource: resource,
+                  response: res,
+                  stats: stats
+                });
+              }
+            );
           } else if (path.indexOf('/+') === 0) {
             // Resolve the URL
             that.resolveShortenedURL(host, userAgent, path, res);
@@ -279,12 +319,26 @@ var Kilius = function() {
             that.buildStatsForUser(host, parseInt(queryString.parse(servURL.query).page) || 0, res);
 
           } else {
-            that.serveResourceFor(host, '../siteContent/' + path, res);
+            resource = path === '/favicon.ico' ? '../siteContent/favicon.ico' : '../siteContent/' + path;
+            that.serveResource(resource,
+              function(err) {
+                that.handleInvalidResource(host, resource, res, err);
+              },
+              function(fd, stats) {
+                that.writeResponseForFile({
+                  fd: fd,
+                  host: host,
+                  resource: resource,
+                  response: res,
+                  stats: stats
+                });
+              }
+            );
           }
           break;
 
         case 'POST':
-          if (path.indexOf('/+') === 0) {
+          if (path.indexOf('/+') === 0 && contentType === 'application/json') { // Only accepting JSON
             that.createShortenedURL(host, req, res);
           } else {
             that.handleUnsupportedRequest(host, verb, path, res);
