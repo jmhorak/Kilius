@@ -39,32 +39,54 @@
 
   <div id="container">
     <header>
-      <h1 id="logo" class="fromWhite">
+      <h1 id="logo" class="blue" data-bind="css: {
+          blue: !animations.main.shown(),
+          black: animations.main.shown(),
+          'color-change': animations.enabled
+        }" >
         <span id="bigK">K</span>
           ili.us
       </h1>
       <div id="userAddress"></div>
     </header>
-    <div id="main" role="main" class="fadeOut">
-      <section class="err hidden"></section>
-      <form class="content">
-        <input type="url" placeholder="Enter a URL" id="url-input" maxlength="2048">
-        <a href="#" class="siteBtn" id="submit-btn">
+    <div id="main" role="main" class="transparent" data-bind="opacity: animations.main.shown(), css: { 'long-delay-fade': animations.enabled }">
+      <section class="err" data-bind="visible: errorMsg().length > 0, text: errorMsg"></section>
+      <form class="content" data-bind="submit: postLink">
+        <input type="url" data-bind="value: newLink" placeholder="Enter a URL" id="url-input" maxlength="2048">
+        <a href="#" class="siteBtn" id="submit-btn" data-bind="click: postLink">
           Shorten
         </a>
       </form>
     </div>
     <div class="banner-plus-table">
-      <div id="banner" class="fadeOut"></div>
-      <div class='link-table-container fadeOut fromTop'>
-        <table summary="Links created by you" class='link-history-table hidden'>
+      <div id="banner" class="transparent" data-bind="opacity: animations.main.shown(), css: { 'long-delay-fade': animations.enabled }"></div>
+      <div class='link-table-container fromTop' data-bind="opacity: animations.table.shown(), css: {
+           'slide': animations.enabled,
+           'immediate-fade': animations.enabled,
+           fromTop: !animations.table.shown(),
+           toBottom: animations.table.shown()
+        }">
+        <table summary="Links created by you" class='link-history-table hidden' data-bind="css: { hidden: !animations.table.shown() }">
           <thead class="table-header">
           <tr>
-          <th class='copy-header'>
+          <th class='copy-header' data-bind="visible: supportFlash">
           <th class='short-link-header'>Short Link
           <th class='long-link-header'>Link
-          <th class='right-align'>Hits
-          <tbody class="link-history">
+          <th class='hits-header right-align'>Hits
+          <tbody class="link-history" data-bind="foreach: links, visible: links().length > 0">
+            <tr class="transparent" data-bind="opacity: $root.animations.rows.shown(), css: { 'short-delay-fade': $root.animations.enabled }">
+             <td data-bind="visible: $root.supportFlash">
+                <div class="copy-cell" data-bind="copyElement: updatePosition()">Copy</div>
+             </td>
+             <td class="short-link-cell">
+                <a class="table-link" data-bind="attr: { href: shortLink }, text: displayShortLink"></a>
+             </td>
+             <td>
+                <a class="table-link" data-bind="attr: { href: longLink }, text: longLink"></a>
+             </td>
+             <td class="right-align" data-bind="text: hits"></td>
+            </tr>
+          </tbody>
         </table>
        </div>
     </div>
@@ -87,6 +109,7 @@
   <!-- scripts concatenated and minified via ant build script-->
   <script defer src="js/plugins.js"></script>
   <script defer src="js/libs/ZeroClipboard.js"></script>
+  <script defer src="js/libs/knockout-2.1.0rc2.js"></script>
   <script defer src="js/script.js"></script>
   <!-- end scripts-->
 

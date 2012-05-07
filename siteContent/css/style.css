@@ -232,10 +232,6 @@ div#banner {
    width: 50em;
    position: relative;
    border-radius: 20px;
-   -webkit-transition: opacity 350ms linear 600ms;
-   -moz-transition: opacity 1150ms linear 400ms;
-   -o-transition: opacity 1150ms linear 400ms;
-   -ms-transition: opacity 1150ms linear 400ms;
 }
 
 span#bigK {
@@ -254,18 +250,21 @@ h1#logo {
    left: -2em;
    font: bold 6.0em 'Open Sans', sans-serif;
    text-shadow: -3px -3px 4px black;
-   -webkit-transition: color 350ms linear 600ms;
-   -moz-transition: color 1150ms linear 400ms;
-   -o-transition: color 1150ms linear 400ms;
-   -ms-transition: color 1150ms linear 400ms;
 }
 
-h1.toBlack {
+h1.black {
    color: #202020;
 }
 
-h1.fromWhite {
+h1.blue {
    color: #1F608D;
+}
+
+.color-change {
+   -webkit-transition: color 350ms linear 600ms;
+   -moz-transition: color 350ms linear 600ms;
+   -o-transition: color 350ms linear 600ms;
+   -ms-transition: color 350ms linear 600ms;
 }
 
 div#main {
@@ -281,18 +280,42 @@ div#main {
    border-radius: 15px;
    text-align: center;
    border: solid 5px gray;
-   -webkit-transition: opacity 350ms linear 600ms;
-   -moz-transition: opacity 1150ms linear 400ms;
-   -o-transition: opacity 1150ms linear 400ms;
-   -ms-transition: opacity 1150ms linear 400ms;
 }
 
-.fadeIn {
+.opaque {
    opacity: 1;
 }
 
-.fadeOut {
+.transparent {
    opacity: 0;
+}
+
+.long-delay-fade {
+   -webkit-transition: opacity 350ms linear 600ms;
+   -moz-transition: opacity 350ms linear 600ms;
+   -o-transition: opacity 350ms linear 600ms;
+   -ms-transition: opacity 350ms linear 600ms;
+}
+
+.short-delay-fade {
+   -webkit-transition: opacity 250ms linear 20ms;
+   -moz-transition: opacity 250ms linear 20ms;
+   -o-transition: opacity 250ms linear 20ms;
+   -ms-transition: opacity 250ms linear 20ms;
+}
+
+.immediate-fade {
+   -webkit-transition: opacity 400ms linear;
+   -moz-transition: opacity 400ms linear;
+   -o-transition: opacity 400ms linear;
+   -ms-transition: opacity 400ms linear;
+}
+
+.slide {
+   -webkit-transition: top 400ms ease-out;
+   -moz-transition: top 400ms ease-out;
+   -o-transition: top 400ms ease-out;
+   -ms-transition: top 400ms ease-out;
 }
 
 form.content {
@@ -412,21 +435,15 @@ a.siteBtn {
 .link-table-container {
    color: white;
    position: relative;
-   -webkit-transition: opacity 400ms linear, top 400ms ease-out;
-   -moz-transition: opacity 300ms linear;
-   -o-transition: opacity 300ms linear;
-   -ms-transition: opacity 300ms linear;
    margin-top: 1em;
 }
 
 .fromTop {
    top: -6em;
-   /*z-index: -10;*/
 }
 
 .toBottom {
    top: 0;
-   /*z-index: 0;*/
 }
 
 th {
@@ -435,15 +452,19 @@ th {
 }
 
 .copy-header {
-   width: 2.5em;
+   width: 8%;
 }
 
 .short-link-header {
-   width: 7em;
+   width: 18%;
 }
 
 .long-link-header {
-   width: 23em;
+   width: 60%;
+}
+
+.hits-header {
+   width: 6%;
 }
 
 .right-align {
@@ -467,13 +488,6 @@ th {
 
 tr.new {
    background-color: #555;
-}
-
-tbody tr {
-   -webkit-transition: opacity 250ms linear 200ms;
-   -moz-transition: opacity 250ms linear;
-   -o-transition: opacity 250ms linear;
-   -ms-transition: opacity 250ms linear;
 }
 
 td {
