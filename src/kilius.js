@@ -13,7 +13,7 @@ var http = require('http'),
     rs = require('./node_modules/modResolve/resolveURL.js'),
     ts = require('./node_modules/modTransform/transformService.js'),
     stat = require('./node_modules/modStats/statService.js'),
-    m = require('mongodb'),
+    db = require('./node_modules/modDatabase/dbService.js'),
     mongo = null,
     server = null;
 
@@ -359,44 +359,6 @@ var Kilius = function() {
 
 }
 
-mongo = new m.Db('kilius', new m.Server('localhost', 27017, {}));
-
-mongo.open(function(err, result) {
-  // If any database initialization method fails, throw
-  var throwOnErr = function(err) { if (err) { throw err; } },
-      mb = 1048576;
-
-  throwOnErr(err);
-
-  // Need to init the collections
-  mongo.collection('counter', {safe: true}, function(err, result) {
-    if (err) {
-      mongo.createCollection('counter', {safe: true}, function(err, collection) {
-        throwOnErr(err);
-        // Initialize the counter collection
-        collection.insert({ tbl: 'links', c: 0 }, {safe: true}, function(err, result) {
-          throwOnErr(err);
-        });
-      });
-    }
-  });
-  mongo.collection('links', {safe: true}, function(err, result) {
-    if (err) {
-      mongo.createCollection('links', {safe: true}, function(err) { throwOnErr(err); });
-    }
-  });
-  mongo.collection('errLog', {safe: true}, function(err, result) {
-    if (err) {
-      // Create the err log collection, cap it at 10 MB
-      mongo.createCollection('errLog', {safe: true, capped: true, size: mb*10}, function(err) { throwOnErr(err); });
-    }
-  });
-  mongo.collection('actLog', {safe: true}, function(err, result) {
-    if (err) {
-      // Create the activity log collection, cap it at 50 MB
-      mongo.createCollection('actLog', {safe: true, capped: true, size: mb*50}, function(err) { throwOnErr(err); });
-    }
-  });
-
+db.initDatabase('kilius', function() {
   server = new Kilius();
 });
