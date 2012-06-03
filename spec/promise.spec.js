@@ -196,6 +196,49 @@ describe('Chaining promises using when', function() {
       expect(promise1.state).toBe('resolved');
       expect(promise2.state).toBe('resolved');
       expect(promise3.state).toBe('resolved');
+    });
+  });
+
+  it('should accept an array of promises', function() {
+    var isReady = false;
+
+    runs(function() {
+      // Each promise should start unfulfilled
+      expect(promise1.state).toBe('unfulfilled');
+      expect(promise2.state).toBe('unfulfilled');
+      expect(promise3.state).toBe('unfulfilled');
+
+      // Put the promises in an array
+      p.Promise.when( [promise1, promise2, promise3] ).then(spy, notCalledSpy);
+
+      setTimeout(function() {
+        // Resolve promise 1
+        promise1.resolve();
+      },1);
+
+      setTimeout(function() {
+        // Resolve promise 2
+        promise2.resolve();
+      }, 1);
+
+      setTimeout(function() {
+        // Resolve promise 3
+        promise3.resolve();
+      }, 1);
+    });
+
+    waitsFor(function() {
+      return spy.wasCalled || notCalledSpy.wasCalled;
+    });
+
+    runs(function() {
+      expect(spy).toHaveBeenCalled();
+      expect(notCalledSpy).not.toHaveBeenCalled();
+
+      // Verify each promise is resolved
+      expect(promise1.state).toBe('resolved');
+      expect(promise2.state).toBe('resolved');
+      expect(promise3.state).toBe('resolved');
     })
   });
 

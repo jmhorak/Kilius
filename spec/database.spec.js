@@ -4,6 +4,7 @@
  */
 
 var db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js'),
+    p = require(__dirname + '/../src/node_modules/modPromise'),
     m = require(__dirname + '/../src/node_modules/mongodb'),
     mongo = null,
     testingDB = 'kilius-testing',
@@ -20,7 +21,8 @@ describe('Database operations', function() {
     it('should create collections if they do not exist', function() {
       var idx = 0,
           dropped = 0,
-          tested = 0;
+          tested = 0,
+          spy = jasmine.createSpy();
 
       runs(function() {
         // Drop all collections then initialize the database
@@ -51,7 +53,7 @@ describe('Database operations', function() {
 
       runs(function() {
 
-        db.initDatabase(testingDB, function() {
+        db.initDatabase(testingDB).then(function() {
           var i = 0,
               col = null;
 
@@ -107,14 +109,16 @@ describe('Database operations', function() {
           for (; i < collections.length; i++) {
             verifyCollections[ collections[i] ]();
           }
-        });
+        }, spy);
       });
 
       waitsFor(function() {
-        return tested === collections.length;
+        return tested === collections.length || spy.wasCalled;
       });
 
       runs(function() {
+        expect(spy).not.toHaveBeenCalled();
+
         mongo.close();
         db.close();
       });
@@ -122,14 +126,15 @@ describe('Database operations', function() {
     });
 
     it('should initialize collections', function() {
-      var bContinue = false;
+      var isReady = false,
+          spy = jasmine.createSpy();
+
 
       runs(function() {
         expect(function() {
-          db.initDatabase(testingDB, function(err, result) {
+          db.initDatabase(testingDB).then(function(result) {
             var i = 0;
 
-            expect(err).toBeNull();
             expect(result).not.toBeNull();
 
             for (; i < collections.length; i++) {
@@ -137,15 +142,19 @@ describe('Database operations', function() {
             }
 
             db.close();
-            bContinue = true;
+            isReady = true;
 
-          });
+          }, spy);
         }).not.toThrow();
       });
 
       waitsFor(function() {
-        return bContinue;
+        return isReady || spy.wasCalled;
       });
+
+      runs(function() {
+        expect(spy).not.toHaveBeenCalled();
+      })
     });
 
   });
@@ -154,14 +163,20 @@ describe('Database operations', function() {
 
     beforeEach(function() {
       // Initialize the database
-      var spy = jasmine.createSpy();
+      var spy = jasmine.createSpy(),
+          notCalled = jasmine.createSpy();
 
       runs(function() {
-        db.initDatabase(testingDB, spy);
+        db.initDatabase(testingDB).then(spy, notCalled);
       });
 
       waitsFor(function() {
-        return spy.wasCalled;
+        return spy.wasCalled || notCalled.wasCalled;
+      });
+
+      runs(function() {
+        expect(spy).toHaveBeenCalled();
+        expect(notCalled).not.toHaveBeenCalled();
       });
     });
 
@@ -178,23 +193,28 @@ describe('Database operations', function() {
             msg = 'there was an error',
             code = 500,
             spy = jasmine.createSpy(),
-            bContinue = false;
+            notCalled = jasmine.createSpy(),
+            isReady = false;
 
         runs(function() {
-          db.logError({ client: client, date: date, msg: msg, code: code }, spy);
+          db.logError({ client: client, date: date, msg: msg, code: code }).then(spy, notCalled);
         });
 
         waitsFor(function() {
-          return spy.wasCalled;
+          return spy.wasCalled || notCalled.wasCalled;
         });
 
         runs(function() {
           // Expect no errors when writing to the database
-          expect(spy.mostRecentCall.args[0]).toBeNull();
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
 
           // Check if the item is in the database
           mongo.open(function(err, connection) {
             var errLog = mongo.collection('errLog');
+
+            expect(err).toBeNull();
+
             errLog.find({ client: client }).toArray(function(err, result) {
               expect(err).toBeNull();
               expect(result.length).toBe(1);
@@ -204,37 +224,42 @@ describe('Database operations', function() {
               expect(result[0].msg).toEqual(msg);
               expect(result[0].code).toEqual(code);
 
-              bContinue = true;
+              isReady = true;
             });
           });
         });
 
         waitsFor(function() {
-          return bContinue;
+          return isReady;
         });
       });
 
       it('should write activities to the actLog database', function() {
         var client = 'my client',
-            date = new Date,
+            date = new Date(),
             msg = 'there was activity',
             spy = jasmine.createSpy(),
-            bContinue = false;
+            notCalled = jasmine.createSpy(),
+            isReady = false;
 
         runs(function() {
-          db.logActivity({ client: client, date: date, msg: msg }, spy);
+          db.logActivity({ client: client, date: date, msg: msg }).then(spy, notCalled);
         });
 
         waitsFor(function() {
-          return spy.wasCalled;
+          return spy.wasCalled || notCalled.wasCalled;
         });
 
         runs(function() {
-          expect(spy.mostRecentCall.args[0]).toBeNull();
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
 
           // Check if the item is in the database
           mongo.open(function(err, connection) {
             var actLog = mongo.collection('actLog');
+
+            expect(err).toBeNull();
+
             actLog.find({ client: client }).toArray(function(err, result) {
               expect(err).toBeNull();
               expect(result.length).toBe(1);
@@ -243,13 +268,13 @@ describe('Database operations', function() {
               expect(result[0].date).toEqual(date);
               expect(result[0].msg).toEqual(msg);
 
-              bContinue = true;
+              isReady = true;
             });
           });
         });
 
         waitsFor(function() {
-          return bContinue;
+          return isReady;
         });
       });
 
@@ -265,9 +290,9 @@ describe('Database operations', function() {
           ], fixturesLoaded = false;
 
       function loadFixtureData() {
-        var bContinue = false;
+        var isReady = false;
 
-        if (fixturesLoaded) return ;
+        if (fixturesLoaded) return;
 
         runs(function() {
 
@@ -277,7 +302,7 @@ describe('Database operations', function() {
 
               // Make sure the insert worked correctly
               expect(err).toBeNull();
-              bContinue = true;
+              isReady = true;
 
             });
           });
@@ -285,7 +310,7 @@ describe('Database operations', function() {
 
         waitsFor(function() {
           // Loaded fixture data
-          return bContinue;
+          return isReady;
         });
 
         runs(function() {
@@ -294,19 +319,19 @@ describe('Database operations', function() {
       };
 
       function removeFixtureData() {
-        var bContinue = false;
+        var isReady = false;
 
         runs(function() {
 
           var links = mongo.collection('links');
           links.remove({}, { safe: true }, function() {
-            bContinue = true;
+            isReady = true;
           });
         });
 
         waitsFor(function() {
           // Removed fixture data
-          return bContinue;
+          return isReady;
         });
 
         runs(function() {
@@ -315,7 +340,9 @@ describe('Database operations', function() {
       };
 
       it('should write the link hit information', function() {
-        var hitsAdded = 0, hitsChecked = 0, hitsPerFixture = 2;
+        var hitsChecked = 0, hitsPerFixture = 2,
+            spy = jasmine.createSpy(),
+            notCalled = jasmine.createSpy();
 
         runs(loadFixtureData);
 
@@ -328,17 +355,14 @@ describe('Database operations', function() {
 
           for (; i < fixtures.length; i++) {
             for (j = 0; j < hitsPerFixture; j++) {
-              db.addNewLinkHit( i+1, { userID: ++k }, function(err, result) {
-                hitsAdded++;
-                expect(err).toBeNull();
-              });
+              db.addNewLinkHit( i+1, { userID: ++k }).then(spy, notCalled);
             }
           }
         });
 
         waitsFor(function() {
           // Added all the hits
-          return hitsAdded === (hitsPerFixture * fixtures.length);
+          return spy.callCount === (hitsPerFixture * fixtures.length) || notCalled.wasCalled;
         });
 
         runs(function() {
@@ -360,6 +384,9 @@ describe('Database operations', function() {
                 });
               };
 
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
+
           for (; i <= fixtures.length; i++) {
             checkHits(i);
           }
@@ -379,7 +406,8 @@ describe('Database operations', function() {
       });
 
       it('should return the resolved link information', function() {
-        var hitsAdded = 0;
+        var spy = jasmine.createSpy(),
+            notCalled = jasmine.createSpy();
 
         runs(loadFixtureData);
 
@@ -388,25 +416,31 @@ describe('Database operations', function() {
         });
 
         runs(function() {
-          var i = 0, j = 0, k = 0,
-              checkCallback = function(index) {
-                return function(err, result) {
-                  expect(err).toBeNull();
-                  expect(result).toEqual(fixtures[index].longLink);
-                  hitsAdded++;
-                };
-              };
+          var i = 0, j = 0;
+
 
           for (; i < fixtures.length; i++) {
-            db.addNewLinkHit( i+1, { userID: ++k }, checkCallback(i));
+            db.addNewLinkHit( i+1, { userID: ++j }).then(spy, notCalled);
           }
         });
 
         waitsFor(function() {
-          return hitsAdded === fixtures.length;
+          return spy.callCount === fixtures.length || notCalled.wasCalled;
         });
 
-        runs(removeFixtureData);
+        runs(function() {
+          var i = 0, len = fixtures.length;
+
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
+
+          // Verify callback data
+          for (; i < len; i++) {
+            expect(spy.argsForCall[i][0]).toEqual(fixtures[i].longLink);
+          }
+
+          removeFixtureData();
+        });
 
         waitsFor(function() {
           return !fixturesLoaded;
@@ -422,25 +456,19 @@ describe('Database operations', function() {
       var startingCounter = 0;
 
       beforeEach(function() {
-        var opened = false;
+        var isReady = false;
 
         runs(function() {
           mongo.open(function(err, connection) {
             var counter = mongo.collection('counter');
-            counter.find({'tbl': 'links'}).toArray(function(err, result) {
-              expect(err).toBeNull();
-              expect(result.length).toBe(1);
-              expect(result[0]).toBeTruthy();
-              expect(typeof result[0].c).toEqual('number');
-
-              startingCounter = result[0].c;
-              opened = true;
+            counter.update({'tbl': 'links'}, {$set: {c: 0} }, { safe: true }, function() {
+              isReady = true;
             });
           });
         });
 
         waitsFor(function() {
-          return opened;
+          return isReady;
         });
       });
 
@@ -449,221 +477,246 @@ describe('Database operations', function() {
       });
 
       it('should increment the link counter by one', function() {
-        var checksRun = 0, prev = startingCounter,
+        var isReady = false,
             counter = mongo.collection('counter'),
-            checkResult = function(last) {
-              return function(err, result) {
+            notCalled = jasmine.createSpy();
 
+        runs(function() {
+
+          function getLinkAndCheckResult(runNumber) {
+            db.getNextLinkID().then(function(result) {
+
+              // Check the result
+              expect(runNumber+1).toEqual(result);
+
+              // Check that value in the database was incremented
+              counter.find({'tbl': 'links'}).toArray(function(err, dbResult) {
                 expect(err).toBeNull();
+                expect(dbResult).toBeTruthy();
+                expect(dbResult.length).toBe(1);
+                expect(typeof dbResult[0].c).toEqual('number');
+                expect(dbResult[0].c).toEqual(result);
 
-                counter.find({'tbl': 'links'}).toArray(function(err, result) {
-                  expect(err).toBeNull();
-                  expect(result).toBeTruthy();
-                  expect(result.length).toBe(1);
-                  expect(typeof result[0].c).toEqual('number');
-                  expect(result[0].c).toEqual(last+1);
-                  prev = result[0].c;
-                });
-              }
-            },
-            waitGuard = function(runNumber) {
-              return function() {
-                return (runNumber + startingCounter === prev);
-              }
-            }
+                // Do 10 runs
+                if (runNumber < 10) {
+                  getLinkAndCheckResult(runNumber+1);
+                } else {
+                  // Finished
+                  isReady = true;
+                }
 
-        // Run 10 tests, checking that the value in the database is incremented
-        for (; checksRun < 10; checksRun++) {
-          runs(function() {
-            db.getNextLinkID( checkResult(prev) );
-          });
-          waitsFor(waitGuard(checksRun+1));
-        }
+              });
+            }, notCalled);
+          }
+
+          getLinkAndCheckResult(0);
+
+        });
+
+        waitsFor(function() {
+          return isReady || notCalled.wasCalled;
+        });
+
+        runs(function() {
+          // Make sure there were no failures
+          expect(notCalled).not.toHaveBeenCalled();
+        })
       });
 
       it('should return the next link ID', function() {
-        var checksRun = 0, prev = startingCounter,
-            checkResult = function(last) {
-              return function(err, result) {
-                expect(err).toBeNull();
-                expect(result).toBeTruthy();
-                expect(typeof result).toEqual('number');
+        var promises = new Array(10),
+            spy = jasmine.createSpy(),
+            notCalled = jasmine.createSpy(),
+            len = 10;
 
-                if (prev) {
-                  expect(result).toEqual(last + 1);
-                  prev = result;
-                } else {
-                  prev = result;
-                }
-              }
-            },
-            waitGuard = function(runNumber) {
-              return function() {
-                return (runNumber + startingCounter === prev);
-              }
-            }
+        runs(function() {
+          var i = 0;
 
-        // Run 10 tests, checking that the value returned is one greater each time
-        for (; checksRun < 10; checksRun++) {
-          runs(function() {
-            db.getNextLinkID( checkResult(prev) );
-          });
-          waitsFor(waitGuard(checksRun+1));
-        }
+          for (; i < len; i++) {
+            promises[i] = db.getNextLinkID();
+          }
+
+          p.Promise.when(promises).then(spy, notCalled);
+        });
+
+        waitsFor(function() {
+          return spy.wasCalled || notCalled.wasCalled;
+        });
+
+        runs(function() {
+          var i = 0;
+
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
+
+          // Verify the next ID was returned
+          for (; i < len; i++) {
+            expect(spy.mostRecentCall.args[i][0]).toBe(i+1);
+          }
+        });
       });
 
     });
 
-    /*clientID: client,
-                linkID: result.c,
-                shortLink: shortLink,
-                longLink: longLink,
-                createDate: new Date,
-                hits: []
-                */
     describe('writing a new link', function() {
       var fixtures = [
-          // Full data
-        { clientID: '127.0.0.1', linkID: 1, shortLink: 'http://kili.us/+/1', longLink: 'http://www.google.com', createDate: new Date(), hits: [] },
-          // Missing client ID
-        { linkID: 2, shortLink: 'http://kili.us/+/2', longLink: 'http://www.yahoo.com', createDate: new Date(), hits: [] },
-          // Missing date
-        { clientID: '127.0.0.1', linkID: 3, shortLink: 'http://kili.us/+/3', longLink: 'http://www.microsoft.com', hits: [] },
-          // Missing hits
-        { clientID: '127.0.0.1', linkID: 4, shortLink: 'http://kili.us/+/4', longLink: 'http://jeffhorak.com', createDate: new Date() },
-          // Bare minimum
+        { linkID: 1, shortLink: 'http://kili.us/+/1', longLink: 'http://www.google.com' },
+        { linkID: 2, shortLink: 'http://kili.us/+/2', longLink: 'http://www.yahoo.com' },
+        { linkID: 3, shortLink: 'http://kili.us/+/3', longLink: 'http://www.microsoft.com' },
+        { linkID: 4, shortLink: 'http://kili.us/+/4', longLink: 'http://jeffhorak.com' },
         { linkID: 5, shortLink: 'http://kili.us/+/5', longLink: 'https://github.com/jmhorak' }
-      ];
+          ],
+          len = fixtures.length;
 
-      beforeEach(function() {
-        var open = false;
+      afterEach(function() {
+        // Drop the links collection and recreate it
+        var isReady = false,
+            isErr = false,
+            doErr = function() { isErr = true; },
 
-        this.addMatchers({
-          isWithinTenSeconds: function(expected) {
-            return Math.abs(this.actual - expected) < 10000;
-          }
-        });
+            promiseOpen = new p.Promise().then(function() {
+
+              var links = mongo.collection('links');
+              links.drop(function(err) {
+                err ? promiseDrop.reject(err) : promiseDrop.resolve();
+              })
+            }, doErr),
+
+            promiseDrop = new p.Promise().then(function() {
+
+              mongo.createCollection('links', function(err) {
+                err ? promiseCreate.reject(err) : promiseCreate.resolve();
+              })
+            }, doErr),
+
+            promiseCreate = new p.Promise().then(function() {
+              isReady = true;
+            }, doErr);
 
         runs(function() {
           mongo.open(function(err, connection) {
-            expect(err).toBeNull();
-            open = true;
+            err ? promiseOpen.reject() : promiseOpen.resolve();
           });
         });
 
         waitsFor(function() {
-          return open;
+          return isReady || isErr;
+        });
+
+        runs(function() {
+          expect(isReady).toBe(true);
+          expect(isErr).toBe(false);
+
+          mongo.close();
         });
       });
 
-      afterEach(function() {
-        var removed = false;
+      it('should insert the link', function() {
+        var i = 0,
+            promises = new Array(len+1),
+            spy = jasmine.createSpy(),
+            notCalled = jasmine.createSpy();
 
         runs(function() {
-          var links = mongo.collection('links');
-          links.remove({}, { safe: true }, function() {
-            removed = true;
+          // Insert each of the links
+          for (; i < len; i++) {
+            promises[i] = db.insertLink(fixtures[i]);
+          }
+
+          promises[len] = new p.Promise();
+
+          mongo.open(function(err, connection) {
+            if (err) {
+              promises[len].reject(err);
+            } else {
+              promises[len].resolve(connection);
+            }
           });
+
+          p.Promise.when(promises).then(spy, notCalled);
         });
 
         waitsFor(function() {
-          return removed;
+          return spy.wasCalled || notCalled.wasCalled;
         });
-
-        runs(function() {
-          mongo.close();
-        });
-      })
-
-      it('should insert the link', function() {
-        var written = 0, verified = 0,
-            verify = function(index, data, mixin) {
-              var fixture = fixtures[index], field;
-
-              if (mixin) {
-                for (field in mixin) {
-                  if (mixin.hasOwnProperty(field)) {
-                    fixture[field] = mixin[field];
-                  }
-                }
-              }
-
-              expect(data).toBeTruthy();
-              expect(data.length).toBe(1);
-              expect(fixture.clientID).toEqual(data[0].clientID);
-              expect(fixture.linkID).toEqual(data[0].linkID);
-              expect(fixture.longLink).toEqual(data[0].longLink);
-              expect(fixture.shortLink).toEqual(data[0].shortLink);
-              expect(fixture.createDate).isWithinTenSeconds(data[0].createDate);
-              expect(fixture.hits).toEqual(data[0].hits);
-            }
 
         runs(function() {
           var i = 0;
-          for (; i < fixtures.length; i++) {
-            db.insertLink(fixtures[i], function(err, result) {
-              expect(err).toBeNull();
-              written++;
+
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
+
+          // Reset everything for verification
+          spy.reset();
+          notCalled.reset();
+          promises = new Array(len);
+
+          // Check that the links are in the database
+          function verifyLink(id) {
+
+            var links = mongo.collection('links');
+            promises[id-1] = new p.Promise();
+
+            links.find({ linkID: id }).toArray(function(err, result) {
+              if (err) {
+                promises[id-1].reject(err);
+              } else {
+                expect(result.length).toBe(1);
+                debugger;
+                expect(result[0].linkID).toEqual(fixtures[id-1].linkID);
+                expect(result[0].shortLink).toEqual(fixtures[id-1].shortLink);
+                expect(result[0].longLink).toEqual(fixtures[id-1].longLink);
+                promises[id-1].resolve();
+              }
             });
           }
+
+          for (; i < len; i++) {
+            verifyLink(i+1);
+          }
+
+          p.Promise.when(promises).then(spy, notCalled);
         });
 
         waitsFor(function() {
-          return written === fixtures.length;
+          return spy.wasCalled || notCalled.wasCalled;
         });
 
         runs(function() {
-          // Check the contents of the database to see if the fixtures have been written
-          var links = mongo.collection('links'),
-              defaultClientID = 'Unknown',
-              defaultCreateDate = new Date,
-              defaultHits = [],
-
-              findAndVerify = function(index, mixin) {
-                links.find({ 'linkID': index }).toArray(function(err, result) {
-                  // Link 1 has all the fields, easy to verify
-                  expect(err).toBeNull();
-                  verify(index-1, result, mixin);
-                  verified++;
-                });
-              }
-
-          findAndVerify(1);
-          findAndVerify(2, { clientID: defaultClientID });
-          findAndVerify(3, { createDate: defaultCreateDate });
-          findAndVerify(4, { hits: defaultHits });
-          findAndVerify(5, { clientID: defaultClientID, createDate: defaultCreateDate, hits: defaultHits });
-        });
-
-        waitsFor(function() {
-          return verified === fixtures.length;
+          // Close the database connection
+          mongo.close();
         });
       });
 
       it('should return true after the link is inserted', function() {
-        var written = 0;
+        var spy = jasmine.createSpy('insert links'),
+            notCalled = jasmine.createSpy('insert links error'),
+            promises = new Array(len);
 
         runs(function() {
           var i = 0;
-          for (; i < fixtures.length; i++) {
-            db.insertLink(fixtures[i], function(err, result) {
-              expect(err).toBeNull();
-              expect(result).toBe(true);
-            });
+
+          for (; i < len; i++) {
+            promises[i] = db.insertLink(fixtures[i]);
+          }
+
+          p.Promise.when(promises).then(spy, notCalled);
+        });
+
+        waitsFor(function() {
+          return spy.wasCalled || notCalled.wasCalled;
+        });
+
+        runs(function() {
+          var i = 0;
+
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
+
+          for (; i < len; i++) {
+            expect(spy.argsForCall[0][i][0]).toBe(true);
           }
         });
-      });
-
-      it('should return an error if the link ID is missing', function() {
-
-      });
-
-      it('should return an error if the long link is missing', function() {
-
-      });
-
-      it('should return an error if the short link is missing', function() {
-
       });
 
     });
