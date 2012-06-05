@@ -721,13 +721,168 @@ describe('Database operations', function() {
 
     });
 
-    /*describe('fetching the links created by a particular user', function() {
+    describe('fetching the links created by a particular user', function() {
 
-      it('should it return an ordered list links for the given user', function() {
-        expect(false).toBeTruthy();
+      var fixtures = [
+            { clientID: 1, createDate: new Date(2010, 3, 2), linkID: 1, shortLink: 'http://kili.us/+/1', longLink: 'http://www.google.com', hits: 20 },
+            { clientID: 2, createDate: new Date(2012, 6, 2), linkID: 2, shortLink: 'http://kili.us/+/2', longLink: 'http://www.yahoo.com', hits: 1 },
+            { clientID: 2, createDate: new Date(2008, 4, 2), linkID: 3, shortLink: 'http://kili.us/+/3', longLink: 'http://www.microsoft.com', hits: 3 },
+            { clientID: 1, createDate: new Date(2011, 3, 2), linkID: 4, shortLink: 'http://kili.us/+/4', longLink: 'http://jeffhorak.com', hits: 15 },
+            { clientID: 1, createDate: new Date(2012, 1, 2), linkID: 5, shortLink: 'http://kili.us/+/5', longLink: 'https://github.com/jmhorak', hits: 8 }
+              ],
+              len = fixtures.length;
+
+      // Add fixtures to the database
+      beforeEach(function() {
+        var isReady = false;
+
+        runs(function() {
+
+          mongo.open(function(err, connection) {
+
+            var links = mongo.collection('links');
+            links.insert(fixtures, { safe: true }, function(err, result) {
+              isReady = true;
+            });
+
+          });
+        });
+
+        waitsFor(function() {
+          return isReady;
+        });
       });
 
-    });*/
+      // Remove all fixtures from the database
+      afterEach(function() {
+        var isReady = false;
+
+        runs(function() {
+
+          var links = mongo.collection('links');
+          links.remove({}, { safe: true }, function(err, result) {
+            isReady = true;
+          });
+
+        });
+
+        waitsFor(function() {
+          return isReady;
+        });
+
+        runs(function() {
+          mongo.close();
+        })
+      });
+
+      describe('searching for a user that doesn\'t exist', function() {
+        it('should return an empty set for an undefined user', function() {
+          var spy = jasmine.createSpy('fetch links for user'),
+              notCalled = jasmine.createSpy('fetch links for user error');
+
+          runs(function() {
+            db.linksForUser({ clientID: 3, pageSize: 2, page: 0 }).then(spy, notCalled);
+          });
+
+          waitsFor(function() {
+            return spy.wasCalled || notCalled.wasCalled;
+          });
+
+          runs(function() {
+            expect(spy).toHaveBeenCalled();
+            expect(notCalled).not.toHaveBeenCalled();
+
+            expect(spy.mostRecentCall.args[0]).toEqual([]);
+          });
+        });
+      });
+
+      describe('searching for a user with valid link data', function() {
+        var spy, notCalled;
+
+        beforeEach(function() {
+          spy = jasmine.createSpy('fetch links for user');
+          notCalled = jasmine.createSpy('fetch links for user error');
+        });
+
+        afterEach(function() {
+          expect(spy).toHaveBeenCalled();
+          expect(notCalled).not.toHaveBeenCalled();
+        });
+
+        it('should return an array sorted by date descending', function() {
+
+          runs(function() {
+            db.linksForUser({ clientID: 1, pageSize: 10, page: 0 }).then(spy, notCalled);
+          });
+
+          waitsFor(function() {
+            return spy.wasCalled || notCalled.wasCalled;
+          });
+
+          runs(function() {
+            var args = spy.mostRecentCall.args,
+                // Should return [ link 5, link 4, link 1 ]
+                matches = [4, 3, 0],
+                i = 0,
+                len = matches.length;
+
+            expect(args[0].length).toBe(3);
+
+            for (; i < len; i++) {
+              // These properties should be returned
+              expect(args[0][i].shortLink).toEqual(fixtures[matches[i]].shortLink);
+              expect(args[0][i].longLink).toEqual(fixtures[matches[i]].longLink);
+              expect(args[0][i].hits).toEqual(fixtures[matches[i]].hits);
+              expect(args[0][i].createDate).toEqual(fixtures[matches[i]].createDate);
+
+              // These properties should not be returned
+              expect(args[0][i].clientID).toBeUndefined();
+              expect(args[0][i].linkID).toBeUndefined();
+            }
+          });
+        });
+
+        it('should return an array limited to the specified size', function() {
+
+          runs(function() {
+            db.linksForUser({ clientID: 1, pageSize: 1, page: 0 }).then(spy, notCalled);
+          });
+
+          waitsFor(function() {
+            return spy.wasCalled || notCalled.wasCalled;
+          });
+
+          runs(function() {
+
+            // Expect only one result returned
+            expect(spy.mostRecentCall.args[0].length).toBe(1);
+          })
+        });
+
+        it('should allow skipping ahead to a specific page', function() {
+
+          runs(function() {
+            // At one document per page, page 2 is the 3rd result
+            db.linksForUser({ clientID: 1, pageSize: 1, page: 2 }).then(spy, notCalled);
+          });
+
+          waitsFor(function() {
+            return spy.wasCalled || notCalled.wasCalled;
+          });
+
+          runs(function() {
+            var link = spy.mostRecentCall.args[0][0];
+
+            // Should contain only link 1
+            expect(link.longLink).toEqual(fixtures[0].longLink);
+            expect(link.shortLink).toEqual(fixtures[0].shortLink);
+            expect(link.hits).toEqual(fixtures[0].hits);
+            expect(link.createDate).toEqual(fixtures[0].createDate);
+          });
+        });
+      });
+    });
   });
 
 });
