@@ -5,7 +5,7 @@
  * Testing for an async Promise module
  */
 
-var p = require(__dirname + '/../src/node_modules/modPromise'),
+var Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
     slice = Array.prototype.slice;
 
 describe('Basic Promise features', function() {
@@ -15,7 +15,7 @@ describe('Basic Promise features', function() {
       spy;
 
   beforeEach(function() {
-    promise = new p.Promise();
+    promise = new Promise();
     notCalledSpy = jasmine.createSpy();
     spy = jasmine.createSpy();
   });
@@ -142,16 +142,150 @@ describe('Basic Promise features', function() {
       expect(promise.state).toEqual('rejected');
       expect(notCalledSpy).not.toHaveBeenCalled();
     });
-});
+  });
+
+  it('should update progress passing all parameters', function() {
+    var passArgs = [ new Date(), true, 12, 'abc', { a: 1, b: 2, c: 3 }, [1, 2, 3], function() { return '123' }, /[abc]/g ];
+
+    runs(function() {
+      expect(promise.state).toEqual('unfulfilled');
+
+      promise.then(notCalledSpy, notCalledSpy, spy);
+
+      // Our async function - call resolve with a bunch of arguments
+      setTimeout(function() {
+        promise.updateProgress.apply(promise, passArgs);
+      }, 1);
+    });
+
+    waitsFor(function() {
+      return spy.wasCalled || notCalledSpy.wasCalled;
+    });
+
+    runs(function() {
+      var args = spy.mostRecentCall.args,
+          i = 0,
+          len = args.length;
+
+      // Verify that the promise state is correct
+      expect(promise.state).toEqual('unfulfilled');
+      expect(spy).toHaveBeenCalled();
+      expect(notCalledSpy).not.toHaveBeenCalled();
+
+      // Verify all the arguments
+      // Should be the same number of arguments
+      expect(passArgs.length).toEqual(len);
+      for (; i < len; i++) {
+        expect(args[i]).toEqual(passArgs[i]);
+      }
+    });
+  });
+
+  it('should eat any progress updates if a callback is not given', function() {
+    var isReady = false;
+
+    runs(function() {
+      expect(promise.state).toEqual('unfulfilled');
+
+      promise.then(notCalledSpy, notCalledSpy);
+
+      // Our async function - call resolve
+      setTimeout(function() {
+        promise.updateProgress('Something', 'Anything');
+        isReady = true;
+      }, 1);
+    });
+
+    waitsFor(function() {
+      return isReady;
+    });
+
+    runs(function() {
+      expect(promise.state).toEqual('unfulfilled');
+      expect(notCalledSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handling state related errors', function() {
+    var promise,
+        spy;
+
+    beforeEach(function() {
+      promise = new Promise();
+      spy = jasmine.createSpy();
+    });
+
+    it('should throw when trying to resolve an already resolved promise', function() {
+      promise.then(spy);
+      promise.resolve();
+
+      expect(promise.state).toEqual('resolved');
+      expect(spy).toHaveBeenCalled();
+
+      expect(promise.resolve).toThrow('Cannot resolve a promise unless it is unfulfilled');
+    });
+
+    it('should throw when trying to resolve a rejected promise', function() {
+      promise.then(null, spy);
+      promise.reject();
+
+      expect(promise.state).toEqual('rejected');
+      expect(spy).toHaveBeenCalled();
+
+      expect(promise.resolve).toThrow('Cannot resolve a promise unless it is unfulfilled');
+
+    });
+
+    it('should throw when trying to reject a resolved promise', function() {
+      promise.then(spy);
+      promise.resolve();
+
+      expect(promise.state).toEqual('resolved');
+      expect(spy).toHaveBeenCalled();
+
+      expect(promise.reject).toThrow('Cannot reject a promise unless it is unfulfilled');
+    });
+
+    it('should throw when trying to reject an already rejected promise', function() {
+      promise.then(null, spy);
+      promise.reject();
+
+      expect(promise.state).toEqual('rejected');
+      expect(spy).toHaveBeenCalled();
+
+      expect(promise.reject).toThrow('Cannot reject a promise unless it is unfulfilled');
+    });
+
+    it('should throw when trying to update progress on a resolved promise', function() {
+      promise.then(spy);
+      promise.resolve();
+
+      expect(promise.state).toEqual('resolved');
+      expect(spy).toHaveBeenCalled();
+
+      expect(promise.updateProgress).toThrow('Cannot update progress of a promise unless it is unfulfilled');
+    });
+
+    it('should throw when trying to update progress on a rejected promise', function() {
+      promise.then(null, spy);
+      promise.reject();
+
+      expect(promise.state).toEqual('rejected');
+      expect(spy).toHaveBeenCalled();
+
+      expect(promise.updateProgress).toThrow('Cannot update progress of a promise unless it is unfulfilled');
+    });
+  });
+
 });
 
 describe('Chaining promises using when', function() {
   var promise1, promise2, promise3, spy, notCalledSpy;
 
   beforeEach(function() {
-    promise1 = new p.Promise();
-    promise2 = new p.Promise();
-    promise3 = new p.Promise();
+    promise1 = new Promise();
+    promise2 = new Promise();
+    promise3 = new Promise();
 
     spy = jasmine.createSpy();
     notCalledSpy = jasmine.createSpy();
@@ -166,7 +300,7 @@ describe('Chaining promises using when', function() {
       expect(promise2.state).toBe('unfulfilled');
       expect(promise3.state).toBe('unfulfilled');
 
-      p.Promise.when(promise1, promise2, promise3).then(spy, notCalledSpy);
+      Promise.when(promise1, promise2, promise3).then(spy, notCalledSpy);
 
       setTimeout(function() {
         // Resolve promise 1
@@ -209,7 +343,7 @@ describe('Chaining promises using when', function() {
       expect(promise3.state).toBe('unfulfilled');
 
       // Put the promises in an array
-      p.Promise.when( [promise1, promise2, promise3] ).then(spy, notCalledSpy);
+      Promise.when( [promise1, promise2, promise3] ).then(spy, notCalledSpy);
 
       setTimeout(function() {
         // Resolve promise 1
@@ -252,7 +386,7 @@ describe('Chaining promises using when', function() {
       expect(promise2.state).toBe('unfulfilled');
       expect(promise3.state).toBe('unfulfilled');
 
-      p.Promise.when(promise1, promise2, promise3).then(notCalledSpy, spy);
+      Promise.when(promise1, promise2, promise3).then(notCalledSpy, spy);
 
       setTimeout(function() {
         promise1.reject();
@@ -294,7 +428,7 @@ describe('Chaining promises using when', function() {
       expect(promise2.state).toBe('unfulfilled');
       expect(promise3.state).toBe('unfulfilled');
 
-      p.Promise.when(promise1, promise2, promise3).then(spy, notCalledSpy);
+      Promise.when(promise1, promise2, promise3).then(spy, notCalledSpy);
 
       // Resolve the promises in reverse
       setTimeout(function() {
@@ -328,7 +462,7 @@ describe('Chaining promises using when', function() {
 
   it('should resolve immediately if no promises are given', function() {
 
-    p.Promise.when().then(spy, notCalledSpy);
+    Promise.when().then(spy, notCalledSpy);
 
     expect(spy).toHaveBeenCalled();
     expect(notCalledSpy).not.toHaveBeenCalled();

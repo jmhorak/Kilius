@@ -1,0 +1,7 @@
+{
+  "database": "testDb",
+  "databaseUser": "testUser",
+  "databasePassword": "testPass",
+  "throttleLimit" : 2,
+  "throttleTime": 10
+}

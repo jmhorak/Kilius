@@ -662,7 +662,6 @@ describe('Database operations', function() {
                 promises[id-1].reject(err);
               } else {
                 expect(result.length).toBe(1);
-                debugger;
                 expect(result[0].linkID).toEqual(fixtures[id-1].linkID);
                 expect(result[0].shortLink).toEqual(fixtures[id-1].shortLink);
                 expect(result[0].longLink).toEqual(fixtures[id-1].longLink);
