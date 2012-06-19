@@ -82,6 +82,13 @@ describe('Basic Promise features', function() {
     });
   });
 
+  it('should immediately call the resolve callback if the promise is already resolved', function() {
+    promise.resolve(6);
+    promise.then(spy, notCalledSpy);
+
+    expect(spy.mostRecentCall.args[0]).toBe(6);
+  });
+
   it('should reject failed async functions returning all passed parameters', function() {
     var passArgs = [ new Date(), true, 12, 'abc', { a: 1, b: 2, c: 3 }, [1, 2, 3], function() { return '123' }, /[abc]/g ];
 
@@ -142,6 +149,13 @@ describe('Basic Promise features', function() {
       expect(promise.state).toEqual('rejected');
       expect(notCalledSpy).not.toHaveBeenCalled();
     });
+  });
+
+  it('should immediately call the reject callback if the promise is already rejected', function() {
+    promise.reject(6);
+    promise.then(notCalledSpy, spy);
+
+    expect(spy.mostRecentCall.args[0]).toBe(6);
   });
 
   it('should update progress passing all parameters', function() {

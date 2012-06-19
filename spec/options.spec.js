@@ -107,7 +107,6 @@ describe('working with options', function() {
 
       it('should use default options if the file cannot be loaded', function() {
         runs(function() {
-          debugger;
           options.init(__dirname + '/optionTest/doesNotExist').then(notCalled, spy);
         });
 

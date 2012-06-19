@@ -189,7 +189,7 @@ describe('Database operations', function() {
 
       it('should write error messages to the errLog database', function() {
         var client = 'my client',
-            date = new Date,
+            date = new Date(),
             msg = 'there was an error',
             code = 500,
             spy = jasmine.createSpy(),
