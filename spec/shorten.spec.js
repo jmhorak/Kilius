@@ -39,22 +39,43 @@ describe('shortening a hyperlink', function() {
     notCalled = jasmine.createSpy();
 
     this.addMatchers({
-      toHaveLogged: function(expected) {
-        var args = this.actual.mostRecentCall.args[0],
-            messageTxt = args.message,
-            client = args.client,
-            url = args.url,
-            messageTest = messageTxt === expected.message,
-            clientTest = client === expected.client,
-            urlTest = url === expected.url;
 
-        this.message = function() {
-          if (!messageTest) { return 'Expected message ' + messageTxt + ' to be ' + expected.message; }
-          if (!clientTest) { return 'Expected client ' + client + ' to be ' + expected.client; }
-          return 'Expected url ' + url + ' to be ' + expected.url;
+      toHaveLogged: function(expected) {
+        var args = this.actual.wasCalled ? this.actual.mostRecentCall.args[0] : {},
+            actualValue,
+            key,
+            hasError = false;
+
+        for (key in args) {
+          if (args.hasOwnProperty(key)) {
+
+            actualValue = args[key];
+            hasError = expected[key] !== actualValue;
+
+            if (hasError) break;
+          }
         }
 
-        return messageTest && clientTest && urlTest;
+        if (!hasError) {
+          for (key in expected) {
+            if (expected.hasOwnProperty(key)) {
+
+              actualValue = args[key];
+              hasError = expected[key] !== actualValue;
+
+              if (hasError) break;
+
+            }
+          }
+        }
+
+        this.message = function() {
+          if (hasError) {
+            return 'Expected ' + key + ' ' + actualValue + ' to be ' + expected[key];
+          }
+        }
+
+        return !hasError;
       }
     });
   })
@@ -284,6 +305,9 @@ describe('shortening a hyperlink', function() {
         return resolveAPromise();
       });
 
+      spyOn(db, 'logActivity').andReturn(new Promise());
+      spyOn(db, 'logError').andReturn(new Promise());
+
       // Write 5 links
       for (; i <= 5; i++) {
         s.shorten({
@@ -293,15 +317,20 @@ describe('shortening a hyperlink', function() {
 
         expect(spy).toHaveBeenCalledWith('http://kili.us/+/' + (i + 1), i);
         expect(notCalled).not.toHaveBeenCalled();
+        expect(db.logActivity).toHaveBeenCalled();
+        expect(db.logError).not.toHaveBeenCalled();
       }
 
     });
 
   });
 
-  xdescribe('writing to the activity log', function() {
+  describe('writing to the activity log', function() {
 
     it('should log activity when a new link is shortened', function() {
+      var url = 'http://arstechnica.com',
+          client = '192.168.1.6';
+
       spyOn(db, 'getNextLinkID').andCallFake(function() {
         return resolveAPromise(1);
       });
@@ -315,29 +344,33 @@ describe('shortening a hyperlink', function() {
       });
 
       s.shorten({
-        url: 'http://arstechnica.com',
-        client: '192.168.1.6'
+        url: url,
+        client: client
       }).then(spy, notCalled);
 
       expect(spy).toHaveBeenCalled();
       expect(notCalled).not.toHaveBeenCalled();
-      expect(db.logActivity).toHaveBeenCalledWith('Link created for user'); // TODO
+      expect(db.logActivity).toHaveLogged({
+        message: 'Link created',
+        client: client
+      });
     });
 
   });
 
-  xdescribe('handling database errors', function() {
+  describe('handling database errors', function() {
 
     describe('errors while getting the next link ID', function() {
 
       var logMessage = 'Database error incrementing links counter',
           logError = 'Some error',
+          clientMessage = 'Database error while shortening link',
           code = 500;
 
       beforeEach(function() {
         spyOn(db, 'getNextLinkID').andCallFake(function() {
           return rejectAPromise({
-            logMessage: logMessage,
+            message: logMessage,
             error: logError,
             code: code
           });
@@ -350,18 +383,26 @@ describe('shortening a hyperlink', function() {
       });
 
       it('should write errors to the error log', function() {
+        var url = 'http://espn.com',
+            client = '192.168.1.5';
+
         spyOn(db, 'logError').andCallFake(function() {
           return resolveAPromise();
         });
 
         s.shorten({
-          url: 'http://espn.com',
-          client: '192.168.1.5'
+          url: url,
+          client: client
         }).then(notCalled, spy);
 
-        expect(db.logError).toHaveBeenCalledWith(logError);
+        expect(db.logError).toHaveLogged({
+          message: logMessage,
+          error: logError,
+          code: code
+        });
+
         expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith(logMessage, code);
+        expect(spy).toHaveBeenCalledWith(clientMessage, code);
       });
 
       it('should throw if it cannot write to the error log', function() {
@@ -371,14 +412,20 @@ describe('shortening a hyperlink', function() {
           return rejectAPromise(errStr);
         });
 
-        expect(s.shorten({
-          url: 'http://nytimes.com',
-          client: '192.168.1.5'
-        }).then(notCalled, spy)).toThrow(errStr);
+        expect(function() {
+          s.shorten({
+            url: 'http://nytimes.com',
+            client: '192.168.1.5'
+          }).then(notCalled, notCalled)
+        }).toThrow(errStr);
 
-        expect(db.logError).toHaveBeenCalledWith(logError);
+        expect(db.logError).toHaveLogged({
+          message: logMessage,
+          error: logError,
+          code: code
+        });
+
         expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith(logMessage, code);
       });
 
     });
@@ -386,6 +433,7 @@ describe('shortening a hyperlink', function() {
     describe('errors while inserting a link into the database', function() {
       var logMessage = 'Database error inserting into links database',
           logError = 'Some error',
+          clientMessage = 'Database error while shortening link',
           code = 500;
 
       beforeEach(function() {
@@ -395,7 +443,7 @@ describe('shortening a hyperlink', function() {
 
         spyOn(db, 'insertLink').andCallFake(function() {
           return rejectAPromise({
-            logMessage:logMessage,
+            message:logMessage,
             error: logError,
             code: code
           });
@@ -413,9 +461,13 @@ describe('shortening a hyperlink', function() {
           client: '192.168.1.5'
         }).then(notCalled, spy);
 
-        expect(db.logError).toHaveBeenCalledWith(logError);
+        expect(db.logError).toHaveLogged({
+          message: logMessage,
+          error: logError,
+          code: code
+        });
         expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith(logMessage, code);
+        expect(spy).toHaveBeenCalledWith(clientMessage, code);
       });
 
       it('should throw if it cannot write to the error log', function() {
@@ -425,20 +477,25 @@ describe('shortening a hyperlink', function() {
           return rejectAPromise(errStr);
         });
 
-        expect(s.shorten({
-          url: 'http://amazon.com',
-          client: '192.168.1.5'
-        }).then(notCalled, spy)).toThrow(errStr);
+        expect(function() {
+          s.shorten({
+            url: 'http://amazon.com',
+            client: '192.168.1.5'
+          }).then(notCalled, notCalled)
+        }).toThrow(errStr);
 
-        expect(db.logError).toHaveBeenCalledWith(logError);
+        expect(db.logError).toHaveLogged({
+          message: logMessage,
+          error: logError,
+          code: code
+        });
         expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith(logMessage, code);
       });
 
     });
 
     describe('errors while writing to the activity log', function() {
-      var logMessage = 'Database error writing to activity log',
+      var logMessage = 'Database error writing to the activity log',
           logError = 'Some error',
           code = 500;
 
@@ -453,8 +510,8 @@ describe('shortening a hyperlink', function() {
 
         spyOn(db, 'logActivity').andCallFake(function() {
           return rejectAPromise({
-            logMessage: logMessage,
-            logError: logError,
+            message: logMessage,
+            error: logError,
             code: code
           });
         });
@@ -462,6 +519,7 @@ describe('shortening a hyperlink', function() {
       });
 
       it('should write errors to the error log', function() {
+
         spyOn(db, 'logError').andCallFake(function() {
           return resolveAPromise();
         });
@@ -469,11 +527,17 @@ describe('shortening a hyperlink', function() {
         s.shorten({
           url: 'http://netflix.com',
           client: '192.168.1.7'
-        }).then(notCalled, spy);
+        }).then(spy, notCalled);
 
-        expect(db.logError).toHaveBeenCalledWith(logError);
+        expect(db.logError).toHaveLogged({
+          message: logMessage,
+          error: logError,
+          code: code
+        });
+
+        // Even though writing to the activity log fails, the shortening worked
         expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith(logMessage, code);
+        expect(spy).toHaveBeenCalledWith('http://kili.us/+/2', 1);
       });
 
       it('should throw if it cannot write to the error log', function() {
@@ -483,14 +547,19 @@ describe('shortening a hyperlink', function() {
           return rejectAPromise(errStr);
         });
 
-        expect(s.shorten({
-          url: 'http://intel.com',
-          client: '192.168.1.7'
-        }).then(notCalled, spy)).toThrow(errStr);
+        expect(function() {
+          s.shorten({
+            url: 'http://intel.com',
+            client: '192.168.1.7'
+          }).then(notCalled, notCalled)
+        }).toThrow(errStr);
 
-        expect(db.logError).toHaveBeenCalledWith(logError);
+        expect(db.logError).toHaveLogged({
+          message: logMessage,
+          error: logError,
+          code: code
+        });
         expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith(logMessage, code);
       });
     });
 
