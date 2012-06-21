@@ -6,10 +6,6 @@ var transform = require(__dirname + '/../src/node_modules/modTransform/transform
 
 describe('Transformation service', function() {
 
-  beforeEach(function() {
-    transform.init();
-  });
-
   describe('parsing given language strings', function() {
 
     describe('parsing invalid input', function() {
