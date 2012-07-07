@@ -30,7 +30,7 @@ exports.rejectAPromise = function(retValue) {
   return promise;
 }
 
-exports.matcher_toHaveLogged = function(expected) {
+exports.equalObjectMatcher = function(expected) {
   var args = this.actual.wasCalled ? this.actual.mostRecentCall.args[0] : {},
       actualValue,
       key,

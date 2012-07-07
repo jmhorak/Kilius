@@ -4,6 +4,8 @@
  * Date: 7/6/12
  */
 
+/*globals describe beforeEach jasmine spyOn it expect*/
+
 var logging = require(__dirname + '/../src/node_modules/modLogging'),
     db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js'),
     helpers = require('./testing.helpers.js');
@@ -15,7 +17,7 @@ describe('the logging modules', function() {
 
   beforeEach(function() {
     this.addMatchers({
-      toHaveLogged: helpers.matcher_toHaveLogged
+      toHaveLogged: helpers.equalObjectMatcher
     });
   });
 
@@ -60,7 +62,7 @@ describe('the logging modules', function() {
       spyOn(db, 'logError').andCallFake(function() { return helpers.resolveAPromise(); });
 
       expect(function() {
-        logging.logError(errPayload);
+        logging.error(errPayload);
       }).not.toThrow();
 
       expect(db.logError).toHaveBeenCalled();
@@ -75,7 +77,7 @@ describe('the logging modules', function() {
       });
 
       expect(function() {
-        logging.logError(errPayload);
+        logging.error(errPayload);
       }).toThrow(message);
 
       expect(db.logError).toHaveBeenCalled();
