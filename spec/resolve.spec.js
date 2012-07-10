@@ -4,34 +4,14 @@
  * Date: 6/20/12
  */
 
-var r = require(__dirname + '/../src/node_modules/modResolve/resolveURL.js'),
+/*globals describe expect it beforeEach afterEach jasmine spyOn */
+
+var r = require(__dirname + '/../src/node_modules/modResolve'),
     Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
+    logging = require(__dirname + '/../src/node_modules/modLogging'),
     transform = require(__dirname + '/../src/node_modules/modTransform/transformService.js'),
-    db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js');
-
-function resolveAPromise(retValue) {
-  var promise = new Promise();
-
-  if (retValue) {
-    promise.resolve(retValue);
-  } else {
-    promise.resolve();
-  }
-
-  return promise;
-}
-
-function rejectAPromise(retValue) {
-  var promise = new Promise();
-
-  if (retValue) {
-    promise.reject(retValue);
-  } else {
-    promise.reject();
-  }
-
-  return promise;
-}
+    db = require(__dirname + '/../src/node_modules/modDatabase'),
+    helper = require('./testing.helpers.js');
 
 describe('resolving a shortened link', function() {
   var spy,
@@ -44,47 +24,12 @@ describe('resolving a shortened link', function() {
     spy = jasmine.createSpy();
     notCalled = jasmine.createSpy();
 
-    //transform.init();
+    spyOn(logging, 'log');
+    spyOn(logging, 'error');
 
     this.addMatchers({
 
-      toHaveLogged: function(expected) {
-        var args = this.actual.wasCalled ? this.actual.mostRecentCall.args[0] : {},
-            actualValue,
-            key,
-            hasError = false;
-
-        for (key in args) {
-          if (args.hasOwnProperty(key)) {
-
-            actualValue = args[key];
-            hasError = expected[key] !== actualValue;
-
-            if (hasError) break;
-          }
-        }
-
-        if (!hasError) {
-          for (key in expected) {
-            if (expected.hasOwnProperty(key)) {
-
-              actualValue = args[key];
-              hasError = expected[key] !== actualValue;
-
-              if (hasError) break;
-
-            }
-          }
-        }
-
-        this.message = function() {
-          if (hasError) {
-            return 'Expected ' + key + ' ' + actualValue + ' to be ' + expected[key];
-          }
-        }
-
-        return !hasError;
-      }
+      toHaveLogged: helper.equalObjectMatcher
     });
   });
 
@@ -94,10 +39,10 @@ describe('resolving a shortened link', function() {
 
     beforeEach(function() {
       spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return resolveAPromise(longLink);
+        return helper.resolveAPromise(longLink);
       });
-      spyOn(db, 'logActivity').andCallFake(function() { return resolveAPromise(); });
-      spyOn(db, 'logError').andCallFake(function() { return resolveAPromise() });
+
+      spyOn(transform, 'uriToLinkID').andCallThrough();
 
       r.resolveURL({
         url: url,
@@ -107,11 +52,10 @@ describe('resolving a shortened link', function() {
     });
 
     afterEach(function() {
-      expect(db.logError).not.toHaveBeenCalled();
+      expect(logging.error).not.toHaveBeenCalled();
     });
 
-    xit('should resolve the shortened URL to a link ID', function() {
-      spyOn(transform, 'uriToLinkID').andCallThrough();
+    it('should resolve the shortened URL to a link ID', function() {
       expect(transform.uriToLinkID).toHaveBeenCalledWith(url);
     });
 
@@ -124,13 +68,13 @@ describe('resolving a shortened link', function() {
       expect(hitInfo.userAgent).toEqual(userAgent);
     });
 
-    xit('should resolve the promise with the original link', function() {
+    it('should resolve the promise with the original link', function() {
       expect(spy).toHaveBeenCalledWith(longLink);
       expect(notCalled).not.toHaveBeenCalled();
     });
 
-    xit('should log activity when a link is resolved', function() {
-      expect(db.logActivity).toHaveLogged({
+    it('should log activity when a link is resolved', function() {
+      expect(logging.log).toHaveLogged({
         message: 'Link hit',
         linkID: transformLinkID
       });
@@ -144,10 +88,8 @@ describe('resolving a shortened link', function() {
     beforeEach(function() {
       spyOn(transform, 'uriToLinkID').andCallThrough();
       spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return resolveAPromise(longLink);
+        return helper.resolveAPromise(longLink);
       });
-      spyOn(db, 'logActivity').andCallFake(function() { return resolveAPromise(); });
-      spyOn(db, 'logError').andCallFake(function() { return resolveAPromise() });
     });
 
     it('should set a missing client to Unknown', function() {
@@ -193,10 +135,9 @@ describe('resolving a shortened link', function() {
 
     beforeEach(function() {
       spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return resolveAPromise(longLink);
+        return helper.resolveAPromise(longLink);
       });
-      spyOn(db, 'logActivity').andCallFake(function() { return resolveAPromise(); });
-      spyOn(db, 'logError').andCallFake(function() { return resolveAPromise() });
+
     });
 
     it('should reject the promise if the shortened URL is undefined', function() {
@@ -215,8 +156,8 @@ describe('resolving a shortened link', function() {
         userAgent: userAgent
       }).then(notCalled, spy);
 
-      expect(db.logActivity).not.toHaveBeenCalled();
-      expect(db.logError).toHaveLogged({
+      expect(logging.log).not.toHaveBeenCalled();
+      expect(logging.error).toHaveLogged({
         message: 'Missing or invalid URI',
         url: undefined,
         client: client,
@@ -242,8 +183,8 @@ describe('resolving a shortened link', function() {
         userAgent: userAgent
       }).then(notCalled, spy);
 
-      expect(db.logActivity).not.toHaveBeenCalled();
-      expect(db.logError).toHaveLogged({
+      expect(logging.log).not.toHaveBeenCalled();
+      expect(logging.error).toHaveLogged({
         message: 'Missing or invalid URI',
         url: invalidUrl,
         client: client,
@@ -259,14 +200,12 @@ describe('resolving a shortened link', function() {
 
     beforeEach(function() {
       spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return rejectAPromise({
+        return helper.rejectAPromise({
           message: message,
           error: error,
           code: 404
         });
       });
-      spyOn(db, 'logActivity').andCallFake(function() { return resolveAPromise(); });
-      spyOn(db, 'logError').andCallFake(function() { return resolveAPromise() });
 
       r.resolveURL({
         url: url,
@@ -282,12 +221,12 @@ describe('resolving a shortened link', function() {
     });
 
     it('should log an error', function() {
-      expect(db.logError).toHaveLogged({
+      expect(logging.error).toHaveLogged({
         message: message,
         error: error,
         code: code
       });
-      expect(db.logActivity).not.toHaveBeenCalled();
+      expect(logging.log).not.toHaveBeenCalled();
     });
 
   });
@@ -299,15 +238,12 @@ describe('resolving a shortened link', function() {
           error = 'Some error';
 
       spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return rejectAPromise({
+        return helper.rejectAPromise({
           message: message,
           error: error,
           code: code
         });
       });
-
-      spyOn(db, 'logActivity').andCallFake(function() { return resolveAPromise() });
-      spyOn(db, 'logError').andCallFake(function() { return resolveAPromise() });
 
       r.resolveURL({
         url: url,
@@ -318,81 +254,12 @@ describe('resolving a shortened link', function() {
       expect(spy).toHaveBeenCalledWith(message, code);
       expect(notCalled).not.toHaveBeenCalled();
 
-      expect(db.logActivity).not.toHaveBeenCalled();
-      expect(db.logError).toHaveLogged({
+      expect(logging.log).not.toHaveBeenCalled();
+      expect(logging.error).toHaveLogged({
         message: message,
         error: error,
         code: code
       });
-    });
-
-    it('should log an error if logging activity fails', function() {
-      var message = 'Database error writing to the activity log',
-          code = 500,
-          error = 'Some error',
-          longLink = 'http://google.com';
-
-      spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return resolveAPromise(longLink);
-      });
-
-      spyOn(db, 'logActivity').andCallFake(function() {
-        return rejectAPromise({
-          message: message,
-          error: error,
-          code: code
-        });
-      });
-      spyOn(db, 'logError').andCallFake(function() { return resolveAPromise() });
-
-      r.resolveURL({
-        url: url,
-        client: client,
-        userAgent: userAgent
-      }).then(notCalled, spy);
-
-
-      expect(db.logActivity).toHaveBeenCalled();
-      expect(db.logError).toHaveLogged({
-        message: message,
-        error: error,
-        code: code
-      });
-    });
-
-    it('should throw an error if logging an error fails', function() {
-      var message = 'Database error writing to the activity log',
-          code = 500,
-          error = 'Some error',
-          longLink = 'http://google.com',
-          errStr = 'Could not write to error log';;
-
-      spyOn(db, 'addNewLinkHit').andCallFake(function() {
-        return resolveAPromise(longLink);
-      });
-
-      spyOn(db, 'logActivity').andCallFake(function() {
-        return rejectAPromise({
-          message: message,
-          error: error,
-          code: code
-        });
-      });
-      spyOn(db, 'logError').andCallFake(function() {
-        return rejectAPromise({
-          message: errStr,
-          error: error,
-          code: code
-        });
-      });
-
-      expect(function() {
-        r.resolveURL({
-          url: url,
-          client: client,
-          userAgent: userAgent
-        }).then(notCalled, spy);
-      }).toThrow(errStr);
     });
   });
 });
