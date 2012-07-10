@@ -8,7 +8,7 @@
 
 var stats = require(__dirname + '/../src/node_modules/modStats'),
     Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
-    db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js'),
+    db = require(__dirname + '/../src/node_modules/modDatabase'),
     options = require(__dirname + '/../src/node_modules/modOptions'),
     logging = require(__dirname + '/../src/node_modules/modLogging'),
     helper = require('./testing.helpers.js');

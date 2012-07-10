@@ -7,7 +7,7 @@
 /*globals describe beforeEach jasmine spyOn it expect*/
 
 var logging = require(__dirname + '/../src/node_modules/modLogging'),
-    db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js'),
+    db = require(__dirname + '/../src/node_modules/modDatabase'),
     helpers = require('./testing.helpers.js');
 
 describe('the logging modules', function() {

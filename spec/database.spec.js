@@ -3,8 +3,10 @@
  *  @tests dbService.js
  */
 
-var db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js'),
-    p = require(__dirname + '/../src/node_modules/modPromise'),
+/*globals describe expect beforeEach afterEach it runs waitsFor jasmine */
+
+var db = require(__dirname + '/../src/node_modules/modDatabase'),
+    Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
     m = require(__dirname + '/../src/node_modules/mongodb'),
     mongo = null,
     testingDB = 'kilius-testing',
@@ -28,21 +30,23 @@ describe('Database operations', function() {
         // Drop all collections then initialize the database
         mongo.open(function(err, dbInstance) {
 
+          function dropCollection(err, items) {
+            var name = '';
+
+            if (items.length) {
+              name = items[0].name;
+              mongo.dropCollection( name.slice(name.indexOf('.')+1) , function(err, result) {
+                expect(err).toBeFalsy();
+                dropped++;
+              });
+            } else {
+              dropped++;
+            }
+          }
+
           for (; idx < collections.length; idx++) {
 
-            mongo.collectionNames(collections[idx], function(err, items) {
-              var name = '';
-
-              if (items.length) {
-                name = items[0].name;
-                mongo.dropCollection( name.slice(name.indexOf('.')+1) , function(err, result) {
-                  expect(err).toBeFalsy();
-                  dropped++;
-                });
-              } else {
-                dropped++;
-              }
-            });
+            mongo.collectionNames(collections[idx], dropCollection);
           }
         });
       });
@@ -75,7 +79,7 @@ describe('Database operations', function() {
                 expect(docs[0].tbl).toEqual('links');
                 expect(docs[0].c).toBe(0);
                 tested++;
-              })
+              });
             },
 
             'errLog': function() {
@@ -103,7 +107,7 @@ describe('Database operations', function() {
             'links': function() {
               verifyEmptyCollection( mongo.collection('links') );
             }
-          }
+          };
 
           // Now examine each collection
           for (; i < collections.length; i++) {
@@ -154,7 +158,7 @@ describe('Database operations', function() {
 
       runs(function() {
         expect(spy).not.toHaveBeenCalled();
-      })
+      });
     });
 
   });
@@ -183,7 +187,7 @@ describe('Database operations', function() {
     afterEach(function() {
       mongo.close();
       db.close();
-    })
+    });
 
     describe('writing to the logs', function() {
 
@@ -292,7 +296,7 @@ describe('Database operations', function() {
       function loadFixtureData() {
         var isReady = false;
 
-        if (fixturesLoaded) return;
+        if (fixturesLoaded) { return; }
 
         runs(function() {
 
@@ -316,7 +320,7 @@ describe('Database operations', function() {
         runs(function() {
           fixturesLoaded = true;
         });
-      };
+      }
 
       function removeFixtureData() {
         var isReady = false;
@@ -337,7 +341,7 @@ describe('Database operations', function() {
         runs(function() {
           fixturesLoaded = false;
         });
-      };
+      }
 
       it('should write the link hit information', function() {
         var hitsChecked = 0, hitsPerFixture = 2,
@@ -348,7 +352,7 @@ describe('Database operations', function() {
 
         waitsFor(function() {
           return fixturesLoaded;
-        })
+        });
 
         runs(function() {
           var i = 0, j = 0, k = 0;
@@ -401,7 +405,7 @@ describe('Database operations', function() {
 
         waitsFor(function() {
           return !fixturesLoaded;
-        })
+        });
 
       });
 
@@ -520,7 +524,7 @@ describe('Database operations', function() {
         runs(function() {
           // Make sure there were no failures
           expect(notCalled).not.toHaveBeenCalled();
-        })
+        });
       });
 
       it('should return the next link ID', function() {
@@ -536,7 +540,7 @@ describe('Database operations', function() {
             promises[i] = db.getNextLinkID();
           }
 
-          p.Promise.when(promises).then(spy, notCalled);
+          Promise.when(promises).then(spy, notCalled);
         });
 
         waitsFor(function() {
@@ -574,28 +578,40 @@ describe('Database operations', function() {
             isErr = false,
             doErr = function() { isErr = true; },
 
-            promiseOpen = new p.Promise().then(function() {
+            promiseOpen = new Promise().then(function() {
 
               var links = mongo.collection('links');
               links.drop(function(err) {
-                err ? promiseDrop.reject(err) : promiseDrop.resolve();
-              })
+                if (err) {
+                  promiseDrop.reject(err);
+                } else {
+                  promiseDrop.resolve();
+                }
+              });
             }, doErr),
 
-            promiseDrop = new p.Promise().then(function() {
+            promiseDrop = new Promise().then(function() {
 
               mongo.createCollection('links', function(err) {
-                err ? promiseCreate.reject(err) : promiseCreate.resolve();
-              })
+                if (err) {
+                  promiseCreate.reject(err);
+                } else {
+                  promiseCreate.resolve();
+                }
+              });
             }, doErr),
 
-            promiseCreate = new p.Promise().then(function() {
+            promiseCreate = new Promise().then(function() {
               isReady = true;
             }, doErr);
 
         runs(function() {
           mongo.open(function(err, connection) {
-            err ? promiseOpen.reject() : promiseOpen.resolve();
+            if (err) {
+              promiseOpen.reject(err);
+            } else {
+              promiseOpen.resolve();
+            }
           });
         });
 
@@ -623,7 +639,7 @@ describe('Database operations', function() {
             promises[i] = db.insertLink(fixtures[i]);
           }
 
-          promises[len] = new p.Promise();
+          promises[len] = new Promise();
 
           mongo.open(function(err, connection) {
             if (err) {
@@ -633,7 +649,7 @@ describe('Database operations', function() {
             }
           });
 
-          p.Promise.when(promises).then(spy, notCalled);
+          Promise.when(promises).then(spy, notCalled);
         });
 
         waitsFor(function() {
@@ -655,7 +671,7 @@ describe('Database operations', function() {
           function verifyLink(id) {
 
             var links = mongo.collection('links');
-            promises[id-1] = new p.Promise();
+            promises[id-1] = new Promise();
 
             links.find({ linkID: id }).toArray(function(err, result) {
               if (err) {
@@ -674,7 +690,7 @@ describe('Database operations', function() {
             verifyLink(i+1);
           }
 
-          p.Promise.when(promises).then(spy, notCalled);
+          Promise.when(promises).then(spy, notCalled);
         });
 
         waitsFor(function() {
@@ -699,7 +715,7 @@ describe('Database operations', function() {
             promises[i] = db.insertLink(fixtures[i]);
           }
 
-          p.Promise.when(promises).then(spy, notCalled);
+          Promise.when(promises).then(spy, notCalled);
         });
 
         waitsFor(function() {
@@ -771,7 +787,7 @@ describe('Database operations', function() {
 
         runs(function() {
           mongo.close();
-        })
+        });
       });
 
       describe('searching for a user that doesn\'t exist', function() {
@@ -856,7 +872,7 @@ describe('Database operations', function() {
 
             // Expect only one result returned
             expect(spy.mostRecentCall.args[0].length).toBe(1);
-          })
+          });
         });
 
         it('should allow skipping ahead to a specific page', function() {
