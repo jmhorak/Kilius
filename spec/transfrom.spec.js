@@ -2,6 +2,8 @@
  * Unit tests for the transform service
  */
 
+/*globals describe it expect */
+
 var transform = require(__dirname + '/../src/node_modules/modTransform/transformService.js');
 
 describe('Transformation service', function() {
@@ -93,7 +95,7 @@ describe('Transformation service', function() {
   });
 
   describe('converting between URI and link ID', function() {
-    var Zs = (function() { var s = ''; for (var i = 0; i < 7; i++) { s += 'Z'} return s; })(),
+    var Zs = (function() { var s = ''; for (var i = 0; i < 7; i++) { s += 'Z'; } return s; })(),
         max = 53459728531455,
         min = 0;
 
@@ -119,13 +121,13 @@ describe('Transformation service', function() {
     });
 
     it('should be able to convert between the two', function() {
-      var getRandom = function() { return Math.floor(Math.random() * (max - min + 1)) + min },
+      var getRandom = function() { return Math.floor(Math.random() * (max - min + 1)) + min; },
           linkID = 0,
           uri = '',
-          i = 0;
+          i = 2500;
 
       // These tests are completely random and generated, so run a bunch
-      for (; i < 2500; i++) {
+      while (--i) {
         linkID = getRandom();
         uri = transform.linkIDToURI(linkID);
         expect(transform.uriToLinkID('/+/' + uri)).toEqual(linkID);
