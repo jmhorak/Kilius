@@ -37,7 +37,7 @@ describe('the statistics module', function() {
       var dbPayload = {
         page: payload.page,
         clientID: payload.clientID,
-        pageSize: 10
+        pageSize: options.statsPageLimit
       };
 
       spyOn(db, 'linksForUser').andCallFake(function() {

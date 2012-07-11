@@ -1,7 +1,0 @@
-{
-  "database": "Kilius",
-  "databaseUser": "",
-  "databasePassword": "",
-  "throttleLimit" : 25,
-  "throttleTime": 86400000
-}
