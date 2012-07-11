@@ -1,35 +1,16 @@
 /**
  * URL Shortening unit tests
+ * Author: Jeff Horak
  */
 
-var s = require(__dirname + '/../src/node_modules/modShorten/shortenURL.js'),
+/*globals describe beforeEach jasmine expect waitsFor runs waits it spyOn */
+
+var shorten = require(__dirname + '/../src/node_modules/modShorten/shortenURL.js'),
     Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
     opt = require(__dirname + '/../src/node_modules/modOptions'),
-    db = require(__dirname + '/../src/node_modules/modDatabase/dbService.js');
-
-function resolveAPromise(retValue) {
-  var promise = new Promise();
-
-  if (retValue) {
-    promise.resolve(retValue);
-  } else {
-    promise.resolve();
-  }
-
-  return promise;
-}
-
-function rejectAPromise(retValue) {
-  var promise = new Promise();
-
-  if (retValue) {
-    promise.reject(retValue);
-  } else {
-    promise.reject();
-  }
-
-  return promise;
-}
+    db = require(__dirname + '/../src/node_modules/modDatabase'),
+    logging = require(__dirname + '/../src/node_modules/modLogging'),
+    helper = require('./testing.helpers.js');
 
 describe('shortening a hyperlink', function() {
   var spy, notCalled;
@@ -38,85 +19,52 @@ describe('shortening a hyperlink', function() {
     spy = jasmine.createSpy();
     notCalled = jasmine.createSpy();
 
+    spyOn(logging, 'log');
+    spyOn(logging, 'error');
+
     this.addMatchers({
 
-      toHaveLogged: function(expected) {
-        var args = this.actual.wasCalled ? this.actual.mostRecentCall.args[0] : {},
-            actualValue,
-            key,
-            hasError = false;
-
-        for (key in args) {
-          if (args.hasOwnProperty(key)) {
-
-            actualValue = args[key];
-            hasError = expected[key] !== actualValue;
-
-            if (hasError) break;
-          }
-        }
-
-        if (!hasError) {
-          for (key in expected) {
-            if (expected.hasOwnProperty(key)) {
-
-              actualValue = args[key];
-              hasError = expected[key] !== actualValue;
-
-              if (hasError) break;
-
-            }
-          }
-        }
-
-        this.message = function() {
-          if (hasError) {
-            return 'Expected ' + key + ' ' + actualValue + ' to be ' + expected[key];
-          }
-        }
-
-        return !hasError;
-      }
+      toHaveLogged: helper.equalObjectMatcher
     });
-  })
+  });
 
   describe('verifying a hyperlink is legal', function() {
 
     it('should only accept URLs using the HTTP protocol', function() {
 
-      expect(s.validateURL('ftp://jeffhorak.com')).toBe(false);
-      expect(s.validateURL('telnet://jeffhorak.com')).toBe(false);
-      expect(s.validateURL('http://jeffhorak.com')).toBe(true);
-      expect(s.validateURL('https://jeffhorak.com')).toBe(true);
+      expect(shorten.validateURL('ftp://jeffhorak.com')).toBe(false);
+      expect(shorten.validateURL('telnet://jeffhorak.com')).toBe(false);
+      expect(shorten.validateURL('http://jeffhorak.com')).toBe(true);
+      expect(shorten.validateURL('https://jeffhorak.com')).toBe(true);
 
     });
 
     it('should reject invalid HTTP URLs', function() {
 
-      expect(s.validateURL('http:www.jeffhorak.com')).toBe(false);
-      expect(s.validateURL('http://www.jeffhorak')).toBe(false);
-      expect(s.validateURL('http://ww.jeffhorak')).toBe(false);
-      expect(s.validateURL('http://www.jeff<horak.com')).toBe(false);
-      expect(s.validateURL('http://www.jeff horak.com')).toBe(false);
-      expect(s.validateURL('http://jeffhorak')).toBe(false);
+      expect(shorten.validateURL('http:www.jeffhorak.com')).toBe(false);
+      expect(shorten.validateURL('http://www.jeffhorak')).toBe(false);
+      expect(shorten.validateURL('http://ww.jeffhorak')).toBe(false);
+      expect(shorten.validateURL('http://www.jeff<horak.com')).toBe(false);
+      expect(shorten.validateURL('http://www.jeff horak.com')).toBe(false);
+      expect(shorten.validateURL('http://jeffhorak')).toBe(false);
 
     });
 
     it('should accept an IPv4 address', function() {
-      expect(s.validateURL('http://127.0.0.1')).toBe(true);
-      expect(s.validateURL('https://127.0.0.1')).toBe(true);
+      expect(shorten.validateURL('http://127.0.0.1')).toBe(true);
+      expect(shorten.validateURL('https://127.0.0.1')).toBe(true);
     });
 
     it('should accept an IPv6 address', function() {
-      expect(s.validateURL('http://0:0:0:0:0:0:0:1')).toBe(true);
-      expect(s.validateURL('https://0:0:0:0:0:0:0:1')).toBe(true);
+      expect(shorten.validateURL('http://0:0:0:0:0:0:0:1')).toBe(true);
+      expect(shorten.validateURL('https://0:0:0:0:0:0:0:1')).toBe(true);
     });
 
     it('should only accept URLs shorter than 2048 characters in length', function() {
       // Over the limit
-      expect(s.validateURL(['http://www.', new Array(2048).join('a'), '.com'].join(''))).toBe(false);
+      expect(shorten.validateURL(['http://www.', new Array(2048).join('a'), '.com'].join(''))).toBe(false);
       // At the limit
-      expect(s.validateURL(['http://www.', new Array(2033).join('a'), '.com'].join(''))).toBe(true);
+      expect(shorten.validateURL(['http://www.', new Array(2033).join('a'), '.com'].join(''))).toBe(true);
     });
 
   });
@@ -125,19 +73,11 @@ describe('shortening a hyperlink', function() {
 
     beforeEach(function() {
       spyOn(db, 'getNextLinkID').andCallFake(function() {
-        return resolveAPromise(1);
+        return helper.resolveAPromise(1);
       });
 
       spyOn(db, 'insertLink').andCallFake(function() {
-        return resolveAPromise();
-      });
-
-      spyOn(db, 'logError').andCallFake(function() {
-        return resolveAPromise();
-      });
-
-      spyOn(db, 'logActivity').andCallFake(function() {
-        return resolveAPromise();
+        return helper.resolveAPromise();
       });
     });
 
@@ -145,48 +85,51 @@ describe('shortening a hyperlink', function() {
       var client = '192.168.1.1',
           url = 'abc123';
 
-      s.shorten({
+      shorten.shortenURL({
         url: url,
         client: client
       }).then(notCalled, spy);
 
       expect(spy).toHaveBeenCalledWith('Oops. You\'ve entered an invalid URL.', 400);
-      expect(db.logError).toHaveLogged({
+      expect(logging.error).toHaveLogged({
         message: 'Failed URL validation',
         client: client,
-        url: url
+        url: url,
+        code: 400
       });
-      expect(db.logActivity).not.toHaveBeenCalled();
+      expect(logging.log).not.toHaveBeenCalled();
       expect(notCalled).not.toHaveBeenCalled();
     });
 
     it('should reject the shortening promise and write to the error log if the input is missing the URL', function() {
       var client = '192.168.1.1';
-      s.shorten({
+      shorten.shortenURL({
         client: client
       }).then(notCalled, spy);
 
       expect(spy).toHaveBeenCalledWith('Oops. You\'ve entered an invalid URL.', 400);
-      expect(db.logError).toHaveLogged({
+      expect(logging.error).toHaveLogged({
         message: 'Failed URL validation',
-        client: client
+        client: client,
+        code: 400
       });
-      expect(db.logActivity).not.toHaveBeenCalled();
+      expect(logging.log).not.toHaveBeenCalled();
       expect(notCalled).not.toHaveBeenCalled();
     });
 
     it('should reject the shortening promise and write to the error log if the input is missing the client', function() {
       var url = 'http://www.hp.com';
-      s.shorten({
+      shorten.shortenURL({
         url: url
       }).then(notCalled, spy);
 
       expect(spy).toHaveBeenCalledWith('Validation error', 400);
-      expect(db.logError).toHaveLogged({
+      expect(logging.error).toHaveLogged({
         message: 'Failed client validation',
-        url: url
+        url: url,
+        code: 400
       });
-      expect(db.logActivity).not.toHaveBeenCalled();
+      expect(logging.log).not.toHaveBeenCalled();
       expect(notCalled).not.toHaveBeenCalled();
     });
   });
@@ -199,19 +142,11 @@ describe('shortening a hyperlink', function() {
       opt.throttleTime = 50;
 
       spyOn(db, 'getNextLinkID').andCallFake(function() {
-        return resolveAPromise(1);
+        return helper.resolveAPromise(1);
       });
 
       spyOn(db, 'insertLink').andCallFake(function() {
-        return resolveAPromise();
-      });
-
-      spyOn(db, 'logActivity').andCallFake(function() {
-        return resolveAPromise();
-      });
-
-      spyOn(db, 'logError').andCallFake(function() {
-        return resolveAPromise();
+        return helper.resolveAPromise();
       });
     });
 
@@ -220,51 +155,52 @@ describe('shortening a hyperlink', function() {
           client = '192.168.1.1';
 
       // Shorten a link
-      s.shorten({
+      shorten.shortenURL({
         url: url,
         client: client
       }).then(spy);
 
       // It should correctly shorten the link
       expect(spy).toHaveBeenCalledWith('http://kili.us/+/2', 1);
-      expect(db.logError).not.toHaveBeenCalled();
+      expect(logging.error).not.toHaveBeenCalled();
 
       url = 'http://kili.us';
       client = '192.168.1.1';
 
       // Try shortening a second link with the same client
-      s.shorten({
+      shorten.shortenURL({
         url: url,
         client: client
       }).then(notCalled, spy);
 
       // Should reject because the throttling limit was reached
       expect(spy).toHaveBeenCalledWith('Pace yourself. You\'ve reached your daily shortening limit.', 429);
-      expect(db.logError).toHaveLogged({
+      expect(logging.error).toHaveLogged({
         message: 'User data throttle limit hit',
         client: client,
-        url: url
+        url: url,
+        code: 429
       });
 
-      db.logError.reset();
+      logging.error.reset();
       url = 'http://jeffhorak.com';
       client = '192.168.1.2';
 
       // Try shortening a third link with a different client
-      s.shorten({
+      shorten.shortenURL({
         url: url,
         client: client
       }).then(spy);
 
       expect(spy).toHaveBeenCalledWith('http://kili.us/+/2', 1);
-      expect(db.logError).not.toHaveBeenCalled();
+      expect(logging.error).not.toHaveBeenCalled();
     });
 
     it('should remove the throttling after the time period has elapsed', function() {
 
       runs(function() {
         // Shorten a link
-        s.shorten({
+        shorten.shortenURL({
           url: 'http://www.yahoo.com',
           client: '192.168.1.3'
         }).then(spy);
@@ -277,7 +213,7 @@ describe('shortening a hyperlink', function() {
 
       runs(function() {
         // Throttling for this user should have expired
-        s.shorten({
+        shorten.shortenURL({
           url: 'http://www.google.com',
           client: '192.168.1.3'
         }).then(spy, notCalled);
@@ -298,27 +234,24 @@ describe('shortening a hyperlink', function() {
       opt.throttleLimit = 10;
 
       spyOn(db, 'getNextLinkID').andCallFake(function() {
-        return resolveAPromise(++linkID);
+        return helper.resolveAPromise(++linkID);
       });
 
       spyOn(db, 'insertLink').andCallFake(function() {
-        return resolveAPromise();
+        return helper.resolveAPromise();
       });
-
-      spyOn(db, 'logActivity').andReturn(new Promise());
-      spyOn(db, 'logError').andReturn(new Promise());
 
       // Write 5 links
       for (; i <= 5; i++) {
-        s.shorten({
+        shorten.shortenURL({
           url: 'http://twitter.com',
           client: '192.168.1.4'
         }).then(spy, notCalled);
 
         expect(spy).toHaveBeenCalledWith('http://kili.us/+/' + (i + 1), i);
         expect(notCalled).not.toHaveBeenCalled();
-        expect(db.logActivity).toHaveBeenCalled();
-        expect(db.logError).not.toHaveBeenCalled();
+        expect(logging.log).toHaveBeenCalled();
+        expect(logging.error).not.toHaveBeenCalled();
       }
 
     });
@@ -332,25 +265,21 @@ describe('shortening a hyperlink', function() {
           client = '192.168.1.6';
 
       spyOn(db, 'getNextLinkID').andCallFake(function() {
-        return resolveAPromise(1);
+        return helper.resolveAPromise(1);
       });
 
       spyOn(db, 'insertLink').andCallFake(function() {
-        return resolveAPromise();
+        return helper.resolveAPromise();
       });
 
-      spyOn(db, 'logActivity').andCallFake(function() {
-        return resolveAPromise();
-      });
-
-      s.shorten({
+      shorten.shortenURL({
         url: url,
         client: client
       }).then(spy, notCalled);
 
       expect(spy).toHaveBeenCalled();
       expect(notCalled).not.toHaveBeenCalled();
-      expect(db.logActivity).toHaveLogged({
+      expect(logging.log).toHaveLogged({
         message: 'Link created',
         client: client
       });
@@ -364,12 +293,12 @@ describe('shortening a hyperlink', function() {
 
       var logMessage = 'Database error incrementing links counter',
           logError = 'Some error',
-          clientMessage = 'Database error while shortening link',
+          clientMessage = 'A database error occurred while shortening the link',
           code = 500;
 
       beforeEach(function() {
         spyOn(db, 'getNextLinkID').andCallFake(function() {
-          return rejectAPromise({
+          return helper.rejectAPromise({
             message: logMessage,
             error: logError,
             code: code
@@ -377,7 +306,7 @@ describe('shortening a hyperlink', function() {
         });
 
         spyOn(db, 'insertLink').andCallFake(function() {
-          return resolveAPromise();
+          return helper.resolveAPromise();
         });
 
       });
@@ -386,16 +315,12 @@ describe('shortening a hyperlink', function() {
         var url = 'http://espn.com',
             client = '192.168.1.5';
 
-        spyOn(db, 'logError').andCallFake(function() {
-          return resolveAPromise();
-        });
-
-        s.shorten({
+        shorten.shortenURL({
           url: url,
           client: client
         }).then(notCalled, spy);
 
-        expect(db.logError).toHaveLogged({
+        expect(logging.error).toHaveLogged({
           message: logMessage,
           error: logError,
           code: code
@@ -405,44 +330,21 @@ describe('shortening a hyperlink', function() {
         expect(spy).toHaveBeenCalledWith(clientMessage, code);
       });
 
-      it('should throw if it cannot write to the error log', function() {
-        var errStr = 'Could not write to error log';
-
-        spyOn(db, 'logError').andCallFake(function() {
-          return rejectAPromise(errStr);
-        });
-
-        expect(function() {
-          s.shorten({
-            url: 'http://nytimes.com',
-            client: '192.168.1.5'
-          }).then(notCalled, notCalled)
-        }).toThrow(errStr);
-
-        expect(db.logError).toHaveLogged({
-          message: logMessage,
-          error: logError,
-          code: code
-        });
-
-        expect(notCalled).not.toHaveBeenCalled();
-      });
-
     });
 
     describe('errors while inserting a link into the database', function() {
       var logMessage = 'Database error inserting into links database',
           logError = 'Some error',
-          clientMessage = 'Database error while shortening link',
+          clientMessage = 'A database error occurred while shortening the link',
           code = 500;
 
       beforeEach(function() {
         spyOn(db, 'getNextLinkID').andCallFake(function() {
-          return resolveAPromise(1);
+          return helper.resolveAPromise(1);
         });
 
         spyOn(db, 'insertLink').andCallFake(function() {
-          return rejectAPromise({
+          return helper.rejectAPromise({
             message:logMessage,
             error: logError,
             code: code
@@ -452,16 +354,13 @@ describe('shortening a hyperlink', function() {
       });
 
       it('should write errors to the error log', function() {
-        spyOn(db, 'logError').andCallFake(function() {
-          return resolveAPromise();
-        });
 
-        s.shorten({
+        shorten.shortenURL({
           url: 'http://cnn.com',
           client: '192.168.1.5'
         }).then(notCalled, spy);
 
-        expect(db.logError).toHaveLogged({
+        expect(logging.error).toHaveLogged({
           message: logMessage,
           error: logError,
           code: code
@@ -470,97 +369,6 @@ describe('shortening a hyperlink', function() {
         expect(spy).toHaveBeenCalledWith(clientMessage, code);
       });
 
-      it('should throw if it cannot write to the error log', function() {
-        var errStr = 'Could not write to error log';
-
-        spyOn(db, 'logError').andCallFake(function() {
-          return rejectAPromise(errStr);
-        });
-
-        expect(function() {
-          s.shorten({
-            url: 'http://amazon.com',
-            client: '192.168.1.5'
-          }).then(notCalled, notCalled)
-        }).toThrow(errStr);
-
-        expect(db.logError).toHaveLogged({
-          message: logMessage,
-          error: logError,
-          code: code
-        });
-        expect(notCalled).not.toHaveBeenCalled();
-      });
-
-    });
-
-    describe('errors while writing to the activity log', function() {
-      var logMessage = 'Database error writing to the activity log',
-          logError = 'Some error',
-          code = 500;
-
-      beforeEach(function() {
-        spyOn(db, 'getNextLinkID').andCallFake(function() {
-          return resolveAPromise(1);
-        });
-
-        spyOn(db, 'insertLink').andCallFake(function() {
-          return resolveAPromise();
-        });
-
-        spyOn(db, 'logActivity').andCallFake(function() {
-          return rejectAPromise({
-            message: logMessage,
-            error: logError,
-            code: code
-          });
-        });
-
-      });
-
-      it('should write errors to the error log', function() {
-
-        spyOn(db, 'logError').andCallFake(function() {
-          return resolveAPromise();
-        });
-
-        s.shorten({
-          url: 'http://netflix.com',
-          client: '192.168.1.7'
-        }).then(spy, notCalled);
-
-        expect(db.logError).toHaveLogged({
-          message: logMessage,
-          error: logError,
-          code: code
-        });
-
-        // Even though writing to the activity log fails, the shortening worked
-        expect(notCalled).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalledWith('http://kili.us/+/2', 1);
-      });
-
-      it('should throw if it cannot write to the error log', function() {
-        var errStr = 'Could not write to error log';
-
-        spyOn(db, 'logError').andCallFake(function() {
-          return rejectAPromise(errStr);
-        });
-
-        expect(function() {
-          s.shorten({
-            url: 'http://intel.com',
-            client: '192.168.1.7'
-          }).then(notCalled, notCalled)
-        }).toThrow(errStr);
-
-        expect(db.logError).toHaveLogged({
-          message: logMessage,
-          error: logError,
-          code: code
-        });
-        expect(notCalled).not.toHaveBeenCalled();
-      });
     });
 
   });
