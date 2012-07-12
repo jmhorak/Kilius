@@ -6,12 +6,12 @@
 
 /*globals describe beforeEach jasmine spyOn it expect*/
 
-var stats = require(__dirname + '/../src/node_modules/modStats'),
-    Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
-    db = require(__dirname + '/../src/node_modules/modDatabase'),
-    options = require(__dirname + '/../src/node_modules/modOptions'),
-    logging = require(__dirname + '/../src/node_modules/modLogging'),
-    helper = require('./testing.helpers.js');
+var helper  = require('./testing.helpers.js'),
+    stats   = helper.stats,
+    Promise = helper.Promise,
+    db      = helper.db,
+    options = helper.options,
+    logging = helper.logging;
 
 describe('the statistics module', function() {
   var spy,

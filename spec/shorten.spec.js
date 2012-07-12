@@ -5,12 +5,13 @@
 
 /*globals describe beforeEach jasmine expect waitsFor runs waits it spyOn */
 
-var shorten = require(__dirname + '/../src/node_modules/modShorten/shortenURL.js'),
-    Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
-    opt = require(__dirname + '/../src/node_modules/modOptions'),
-    db = require(__dirname + '/../src/node_modules/modDatabase'),
-    logging = require(__dirname + '/../src/node_modules/modLogging'),
-    helper = require('./testing.helpers.js');
+var helper  = require('./testing.helpers.js'),
+    shorten = helper.shorten,
+    Promise = helper.Promise,
+    opt     = helper.options,
+    db      = helper.db,
+    logging = helper.logging;
+
 
 describe('shortening a hyperlink', function() {
   var spy, notCalled;

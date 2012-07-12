@@ -5,11 +5,12 @@
 
 /*globals describe expect beforeEach afterEach it runs waitsFor jasmine */
 
-var db = require(__dirname + '/../src/node_modules/modDatabase'),
-    Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
-    m = require(__dirname + '/../src/node_modules/mongodb'),
-    mongo = null,
-    testingDB = 'kilius-testing',
+var helper      = require('./testing.helpers.js'),
+    db          = helper.db,
+    Promise     = helper.Promise,
+    m           = require(__dirname + '/../src/node_modules/mongodb'),
+    mongo       = null,
+    testingDB   = 'kilius-testing',
     collections = ['counter', 'links', 'errLog', 'actLog'];
 
 describe('Database operations', function() {

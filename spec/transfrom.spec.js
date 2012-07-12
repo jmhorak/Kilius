@@ -4,7 +4,8 @@
 
 /*globals describe it expect */
 
-var transform = require(__dirname + '/../src/node_modules/modTransform/transformService.js');
+var helper = require('./testing.helpers.js'),
+    transform = helper.transform;
 
 describe('Transformation service', function() {
 

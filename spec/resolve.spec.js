@@ -6,12 +6,12 @@
 
 /*globals describe expect it beforeEach afterEach jasmine spyOn */
 
-var r = require(__dirname + '/../src/node_modules/modResolve'),
-    Promise = require(__dirname + '/../src/node_modules/modPromise').Promise,
-    logging = require(__dirname + '/../src/node_modules/modLogging'),
-    transform = require(__dirname + '/../src/node_modules/modTransform/transformService.js'),
-    db = require(__dirname + '/../src/node_modules/modDatabase'),
-    helper = require('./testing.helpers.js');
+var helper    = require('./testing.helpers.js'),
+    r         = helper.resolve,
+    Promise   = helper.Promise,
+    logging   = helper.logging,
+    transform = helper.transform,
+    db        = helper.db;
 
 describe('resolving a shortened link', function() {
   var spy,
