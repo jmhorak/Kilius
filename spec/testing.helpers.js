@@ -20,24 +20,14 @@ exports.options   = require(__dirname + '/../src/node_modules/modOptions');
 
 exports.resolveAPromise = function (retValue) {
   var promise = new Promise();
-
-  if (retValue) {
-    promise.resolve(retValue);
-  } else {
-    promise.resolve();
-  }
+  promise.resolve.apply(promise, arguments);
 
   return promise;
 };
 
 exports.rejectAPromise = function(retValue) {
   var promise = new Promise();
-
-  if (retValue) {
-    promise.reject(retValue);
-  } else {
-    promise.reject();
-  }
+  promise.reject.apply(promise, arguments);
 
   return promise;
 };
