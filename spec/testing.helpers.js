@@ -16,6 +16,7 @@ exports.shorten   = require(__dirname + '/../src/node_modules/modShorten');
 exports.stats     = require(__dirname + '/../src/node_modules/modStats');
 exports.transform = require(__dirname + '/../src/node_modules/modTransform');
 exports.options   = require(__dirname + '/../src/node_modules/modOptions');
+exports.blacklist = require(__dirname + '/../src/node_modules/modBlackList');
 
 
 exports.resolveAPromise = function (retValue) {
