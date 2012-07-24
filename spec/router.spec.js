@@ -5,11 +5,12 @@
  */
 
 /*globals describe expect it beforeEach jasmine spyOn */
-var helper  = require('./testing.helpers.js'),
-    router  = helper.router,
-    handler = helper.handler,
-    logging = helper.logging,
-    urlMod  = require('url');
+var helper    = require('./testing.helpers.js'),
+    router    = helper.router,
+    handler   = helper.handler,
+    logging   = helper.logging,
+    blacklist = helper.blacklist,
+    urlMod    = require('url');
 
 describe('the routing module', function() {
   var userAgent,
@@ -52,9 +53,41 @@ describe('the routing module', function() {
     path = "/+/abc";
     verb = 'GET';
 
+    spyOn(logging, 'error');
+    spyOn(logging, 'log');
+
     this.addMatchers({
       toHaveBeenCalledWithObject: helper.equalObjectMatcher
     });
+  });
+
+  describe('turning away blacklisted clients', function() {
+
+    beforeEach(function() {
+      spyOn(blacklist, 'isClientBlacklisted').andReturn(true);
+
+      res = {
+        writeHead: jasmine.createSpy(),
+        end: jasmine.createSpy()
+      };
+    });
+
+    it('should log a connection attempt from a blacklisted client', function() {
+      buildRequestDataObj();
+      router.handleRequest(req, res);
+      expect(logging.log).toHaveBeenCalledWithObject({
+        client: host,
+        message: 'Connection attempt from blacklisted client'
+      });
+    });
+
+    it('should return a 403 error', function() {
+      buildRequestDataObj();
+      router.handleRequest(req, res);
+      expect(res.writeHead).toHaveBeenCalledWith(403);
+      expect(res.end).toHaveBeenCalled();
+    });
+
   });
 
   describe('routing GET requests', function() {
@@ -119,7 +152,6 @@ describe('the routing module', function() {
       };
 
       spyOn(handler, 'createShortenedURL');
-      spyOn(logging, 'error');
 
       res = {
         writeHead: jasmine.createSpy(),
@@ -166,7 +198,6 @@ describe('the routing module', function() {
 
     beforeEach(function() {
       spyOn(handler, 'handleUnsupportedRequest');
-      spyOn(logging, 'error');
     });
 
     it('should route POSTs with non-JSON content types to the unsupported request handler', function() {

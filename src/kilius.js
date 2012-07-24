@@ -8,41 +8,59 @@
 //////////////////////////////////////////////////////////////////////////
 
 var http = require('http'),
-    url = require('url'),
-    db = require('.node_modules/modDatabase/dbService.js'),
-    Promise = require('./node_modules/modPromise').Promise;
-
+    db = require('modDatabase'),
+    router = require('modRouter'),
+    blacklist = require('modBlackList'),
+    logging = require('modLogging'),
+    Promise = require('modPromise').Promise,
+    domain = require('domain'),
+    // Create a top-level domain for the server
+    serverDomain = domain.create();
 function runServer() {
   http.createServer(function(req, res) {
-    try {
 
-      // Log starting to handle request
-      db.logActivity({
-        client: req.headers.host,
-        status: 'Starting to process request'
-      });
+    // Create a domain to handle this request
+    var requestDomain = domain.create();
+    requestDomain.add(req);
+    requestDomain.add(res);
 
-      // Is this client blacklisted?
-      // TODO: Add modBlacklist and supporting functionality
+    requestDomain.on('error', function(err) {
+      // Unhandled exception, catch here
+      try {
+        console.error('Error', err, req.url);
+        res.writeHead(500);
+        res.end();
 
-      // TODO: Add modRouter
+        res.on('close', function() {
+          // Kill any resources opened in this domain
+          requestDomain.dispose();
+        });
 
-    } catch (e) {
-      db.logError({
-        message: 'Exception thrown',
-        error: e.toString(),
-        code: 500
-      });
+      } catch (err) {
+        console.error('Error sending 500 to client', err);
+        // Clean up
+        requestDomain.dispose();
+      }
+    });
 
-      res.writeHead(500);
-      res.end();
-    }
+    requestDomain.run(function() {
+      // OK to handle the request
+      router.handleRequest(req, res);
+    });
+
   }).listen(8642);
 }
 
 // Initialize the database and start the server
 db.initDatabase().then(
-    runServer,
+    function() {
+      blacklist.initBlacklist().then(
+          serverDomain.run(runServer),
+          function(message, code) {
+            throw message;
+          }
+      );
+    },
     function(err) {
       throw 'Failure to initialize database with error ' + err;
     }
