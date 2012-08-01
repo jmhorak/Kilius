@@ -35,7 +35,7 @@ describe('testing the request handler module', function() {
         ua = 'Mozilla',
         payload = {
           host: host,
-          url: url,
+          url: { href: url},
           ua: ua
         },
         testPayload = {
@@ -259,7 +259,7 @@ describe('testing the request handler module', function() {
     it('should pass to the shortening module', function() {
       spyOn(shorten, 'shortenURL').andReturn(new Promise());
 
-      handler.createShortenedURL({ response: response, data: url, host: client });
+      handler.createShortenedURL({ response: response, data: { url: url }, host: client });
 
       expect(shorten.shortenURL).toHaveBeenCalledWith({
         url: url,
