@@ -135,38 +135,6 @@ describe('Database operations', function() {
 
     });
 
-    xit('should initialize collections', function() {
-      var isReady = false,
-          spy = jasmine.createSpy();
-
-
-      runs(function() {
-        expect(function() {
-          db.initDatabase().then(function(result) {
-            var i = 0;
-
-            expect(result).not.toBeNull();
-
-            for (; i < collections.length; i++) {
-              expect(result.collection( collections[i] ) instanceof m.Collection).toBe(true);
-            }
-
-            db.close();
-            isReady = true;
-
-          }, spy);
-        }).not.toThrow();
-      });
-
-      waitsFor(function() {
-        return isReady || spy.wasCalled;
-      });
-
-      runs(function() {
-        expect(spy).not.toHaveBeenCalled();
-      });
-    });
-
   });
 
   describe('reading and writing to the database', function() {
@@ -349,6 +317,29 @@ describe('Database operations', function() {
         });
       }
 
+      beforeEach(function() {
+        this.addMatchers({
+          toBeOneOf: function(expected) {
+            var actual = this.actual,
+                i = 0,
+                len = expected.length,
+                hasError = true;
+
+            for (; i < len && hasError; i++) {
+              hasError = actual === expected[i];
+            }
+
+            this.message = function() {
+              if (hasError) {
+                return 'Expected ' + actual + ' to be in set <' + expected.join(', ') + '>';
+              }
+            };
+
+            return !hasError;
+          }
+        });
+      });
+
       it('should write the link hit information', function() {
         var hitsChecked = 0, hitsPerFixture = 2,
             spy = jasmine.createSpy(),
@@ -377,22 +368,23 @@ describe('Database operations', function() {
 
         runs(function() {
           var links = mongo.collection('links'),
-              i = 1,
-              // Check each link, it should have two hits
-              checkHits = function(linkID ) {
-                links.find({ linkID: linkID }).toArray(function(err, results) {
-                  var hitID = linkID*2;
-                  expect(err).toBeNull();
-                  expect(results.length).toBe(1);
-                  expect(results[0].hits).toBeTruthy();
-                  expect(results[0].hits.length).toBe(2);
+              i = 1;
 
-                  expect(results[0].hits[0].userID).toBe(hitID-1);
-                  expect(results[0].hits[1].userID).toBe(hitID);
+          // Check each link, it should have two hits
+          function checkHits(linkID ) {
+            links.find({ linkID: linkID }).toArray(function(err, results) {
+              var hitID = linkID*2;
+              expect(err).toBeNull();
+              expect(results.length).toBe(1);
+              expect(results[0].hits).toBeTruthy();
+              expect(results[0].hits.length).toBe(2);
 
-                  hitsChecked++;
-                });
-              };
+              expect(results[0].hits[0].userID).toBeOneOf([hitID-1, hitID]);
+              expect(results[0].hits[1].userID).toBeOneOf([hitID-1, hitID]);
+
+              hitsChecked++;
+            });
+          }
 
           expect(spy).toHaveBeenCalled();
           expect(notCalled).not.toHaveBeenCalled();
