@@ -18,41 +18,64 @@ var http = require('http'),
     // Create a top-level domain for the server
     serverDomain = domain.create();
 
+/**
+ * Entry point for new requests. Create a domain and push to request handler
+ * @param req - The request
+ * @param res - Generated response
+ */
+function onRequest(req, res) {
+  // Create a domain to handle this request
+  var requestDomain = domain.create();
+  requestDomain.add(req);
+  requestDomain.add(res);
+
+  requestDomain.on('error', function(err) {
+    // Unhandled exception, catch here
+    try {
+      console.error('Error', err, req.url);
+      res.writeHead(500);
+      res.end();
+
+      res.on('close', function() {
+        // Kill any resources opened in this domain
+        requestDomain.dispose();
+      });
+
+    } catch (err) {
+      console.error('Error sending 500 to client', err);
+      // Clean up
+      requestDomain.dispose();
+    }
+  });
+
+  requestDomain.run(function() {
+    // OK to handle the request
+    router.handleRequest(req, res);
+  });
+}
+
+/**
+ * Start the server and begin listening for requests
+ */
 function runServer() {
 
-  cli.createCLI(
-      http.createServer(function(req, res) {
-        // Create a domain to handle this request
-        var requestDomain = domain.create();
-        requestDomain.add(req);
-        requestDomain.add(res);
+  var args = process.argv.slice(2),
+      len = args.length,
+      regStartAsService = /^(\/|--)s(ervice)?$/, // check for --service, --s, /service, or /s
+      startAsService = false;
 
-        requestDomain.on('error', function(err) {
-          // Unhandled exception, catch here
-          try {
-            console.error('Error', err, req.url);
-            res.writeHead(500);
-            res.end();
+  // Test for option to start as a service
+  while ((len--) && !startAsService) {
+    startAsService = regStartAsService.test(args[len]);
+  }
 
-            res.on('close', function() {
-              // Kill any resources opened in this domain
-              requestDomain.dispose();
-            });
-
-          } catch (err) {
-            console.error('Error sending 500 to client', err);
-            // Clean up
-            requestDomain.dispose();
-          }
-        });
-
-        requestDomain.run(function() {
-          // OK to handle the request
-          router.handleRequest(req, res);
-        });
-
-      }).listen(8642)
-  );
+  // Start the server
+  if (startAsService) {
+    http.createServer(onRequest).listen(8642);
+  } else {
+    // If not started as a service, load interactive CLI
+    cli.createCLI(http.createServer(onRequest).listen(8642));
+  }
 }
 
 // Initialize the database and start the server
