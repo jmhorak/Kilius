@@ -80,7 +80,7 @@ describe('testing the request handler module', function() {
       });
 
       spyOn(fetch, 'fetchResource').andCallFake(function() {
-        return helper.resolveAPromise(fd, { size: size, mtime: mtime }, mime);
+        return helper.resolveAPromise(false, fd, { size: size, mtime: mtime }, mime);
       });
 
       payload.response = response;
@@ -127,7 +127,11 @@ describe('testing the request handler module', function() {
     });
 
     it('should populate the response with the history data', function() {
-      var results = { abc: 123 },
+      var results = [ { longLink: 'https://github.com/jmhorak',
+                        shortLink: 'http://kili.us/+/3',
+                        hits: [],
+                        createDate: new Date()
+                      } ],
           jsonString = JSON.stringify({ history: results });
 
       spyOn(stats, 'linksForUser').andCallFake(function() {
@@ -176,7 +180,7 @@ describe('testing the request handler module', function() {
         response: response
       });
 
-      expect(fetch.fetchResource).toHaveBeenCalledWith(resource, client);
+      expect(fetch.fetchResource).toHaveBeenCalledWith(resource, client, undefined);
     });
 
     it('should populate the response with the requested file', function() {
@@ -186,7 +190,7 @@ describe('testing the request handler module', function() {
           time = new Date();
 
       spyOn(fetch, 'fetchResource').andCallFake(function() {
-        return helper.resolveAPromise(file, { size: size, mtime: time}, mimeType);
+        return helper.resolveAPromise(false, file, { size: size, mtime: time}, mimeType);
       });
 
       handler.handleFetchResource({
@@ -222,6 +226,21 @@ describe('testing the request handler module', function() {
 
       expect(response.end).toHaveBeenCalledWith(JSON.stringify({ message: 'Server error fetching file'}));
 
+    });
+
+    it('should return 304 if the file is cached on the client', function() {
+      spyOn(fetch, 'fetchResource').andCallFake(function() {
+        return helper.resolveAPromise(true);
+      });
+
+      handler.handleFetchResource({
+        host: client,
+        resource: resource,
+        response: response
+      });
+
+      expect(response.writeHead).toHaveBeenCalledWith(304);
+      expect(response.end).toHaveBeenCalled();
     });
   });
 

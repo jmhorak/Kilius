@@ -19,6 +19,7 @@ describe('fetching resources', function() {
       notCalled,
       client = 'abc123',
       code = 404,
+      modDate,
       invalidFileStr = 'Missing or invalid file',
       stats = {};
 
@@ -34,7 +35,9 @@ describe('fetching resources', function() {
     spyOn(logging, 'log');
     spyOn(logging, 'error');
 
+    modDate = new Date();
     stats.isFile = function() { return true; };
+    stats.mtime = modDate;
   });
 
   describe('file not found', function() {
@@ -209,7 +212,19 @@ describe('fetching resources', function() {
         message: 'Served ' + resource
       });
 
-      expect(spy).toHaveBeenCalledWith(fd, stats, expectedMimeType);
+      expect(spy).toHaveBeenCalledWith(false, fd, stats, expectedMimeType);
+      expect(notCalled).not.toHaveBeenCalled();
+    }
+
+    function fetchCachedResourceTest(resource, date) {
+      fetch.fetchResource(resource, client, date).then(spy, notCalled);
+      expect(logging.error).not.toHaveBeenCalled();
+      expect(logging.log).toHaveBeenCalledWithObject({
+        client: client,
+        message: 'Use client cached ' + resource
+      });
+
+      expect(spy).toHaveBeenCalledWith(true);
       expect(notCalled).not.toHaveBeenCalled();
     }
 
@@ -231,6 +246,10 @@ describe('fetching resources', function() {
 
     it('should fetch flash files', function() {
       fetchResourceTest('copy.swf', 'application/x-shockwave-flash');
+    });
+
+    it('should not fetch the file if the client cached version is up-to-date', function() {
+      fetchCachedResourceTest('main.css', modDate);
     });
   });
 });

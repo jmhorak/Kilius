@@ -15,6 +15,7 @@ var helper    = require('./testing.helpers.js'),
 describe('the routing module', function() {
   var userAgent,
       contentType,
+      modDate,
       host,
       url,
       path,
@@ -28,7 +29,8 @@ describe('the routing module', function() {
     req.headers = {
         host: host,
         'user-agent': userAgent,
-        'content-type': contentType
+        'content-type': contentType,
+        'if-modified-since': modDate
       };
     req.method = verb;
     req.url = url;
@@ -39,6 +41,7 @@ describe('the routing module', function() {
       host: host,
       ua: userAgent,
       contentType: contentType,
+      modSince: modDate,
       verb: verb,
       response: res,
       request: req
@@ -48,6 +51,7 @@ describe('the routing module', function() {
   beforeEach(function() {
     userAgent = 'Mozilla';
     contentType = 'application/json';
+    modDate = new Date();
     host = 'abc123';
     url = 'http://kili.us/+/abc';
     path = "/+/abc";
