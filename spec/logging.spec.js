@@ -17,7 +17,16 @@ describe('the logging modules', function() {
 
   beforeEach(function() {
     this.addMatchers({
-      toHaveLogged: helpers.equalObjectMatcher
+      toHaveLogged: helpers.equalObjectMatcher,
+      toHavePayload: function(expected) {
+        var args = this.actual.wasCalled ? this.actual.mostRecentCall.args[0] : {};
+
+        this.message = function() {
+          return "Expected " + expected + " to be a substring of " + args;
+        };
+
+        return args.indexOf(expected) >= 0;
+      }
     });
   });
 
@@ -41,6 +50,8 @@ describe('the logging modules', function() {
 
     it('should try to log an error if the database fails', function() {
 
+      spyOn(console, 'log');
+      spyOn(console, 'error');
       spyOn(db, 'logActivity').andCallFake(function() {
         return helpers.rejectAPromise(errPayload);
       });
@@ -54,11 +65,23 @@ describe('the logging modules', function() {
       expect(db.logError).toHaveLogged(errPayload);
     });
 
+    it('should write to stdout if the process was started as a service', function() {
+
+      spyOn(console, 'log');
+      spyOn(db, 'logActivity').andCallFake(function() { return helpers.resolveAPromise(); });
+
+      logging.setServiceMode(true);
+      logging.log(payload);
+
+      expect(console.log).toHavePayload(payload.message);
+    });
+
   });
 
   describe('Logging errors', function() {
 
     it('should pass the payload to the database layer', function() {
+      spyOn(console, 'error');
       spyOn(db, 'logError').andCallFake(function() { return helpers.resolveAPromise(); });
 
       expect(function() {
@@ -71,7 +94,7 @@ describe('the logging modules', function() {
 
     it('should throw the error if the database fails', function() {
       var message = 'Some error';
-
+      spyOn(console, 'error');
       spyOn(db, 'logError').andCallFake(function() {
         return helpers.rejectAPromise(message);
       });
@@ -82,6 +105,18 @@ describe('the logging modules', function() {
 
       expect(db.logError).toHaveBeenCalled();
       expect(db.logError).toHaveLogged(errPayload);
+    });
+
+    it('should write to stderr', function() {
+
+      spyOn(console, 'error');
+      spyOn(db, 'logError').andCallFake(function() {
+        return helpers.resolveAPromise();
+      });
+
+      logging.error(errPayload);
+
+      expect(console.error).toHavePayload(errPayload.message);
     });
 
   });

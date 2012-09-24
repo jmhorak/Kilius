@@ -61,13 +61,27 @@ function runServer() {
 
   var args = process.argv.slice(2),
       len = args.length,
-      regStartAsService = /^(\/|--)s(ervice)?$/, // check for --service, --s, /service, or /s
+      regStartAsService = /^(\/|--|-)s(ervice)?$/, // check for --service, --s, /service, or /s
       startAsService = false;
 
   // Test for option to start as a service
   while ((len--) && !startAsService) {
     startAsService = regStartAsService.test(args[len]);
   }
+
+  logging.setServiceMode(startAsService);
+
+  var message = "Kili.us server started";
+
+  if (logging.isServiceMode()) {
+    message += " as a service";
+  } else {
+    message += " with CLI";
+  }
+
+  logging.log({
+    message: message
+  });
 
   // Start the server
   if (startAsService) {
