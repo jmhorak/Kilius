@@ -15,6 +15,7 @@ var http = require('http'),
     cli     = require('modCLI'),
     Promise = require('modPromise').Promise,
     domain = require('domain'),
+    options = require('modOptions'),
     // Create a top-level domain for the server
     serverDomain = domain.create();
 
@@ -85,10 +86,10 @@ function runServer() {
 
   // Start the server
   if (startAsService) {
-    http.createServer(onRequest).listen(8642);
+    http.createServer(onRequest).listen(options.serverPort);
   } else {
     // If not started as a service, load interactive CLI
-    cli.createCLI(http.createServer(onRequest).listen(8642));
+    cli.createCLI(http.createServer(onRequest).listen(options.serverPort));
   }
 }
 
