@@ -12,11 +12,11 @@ So, here are the installation instructions.
 + Install <a href="http://nodejs.org/">node</a> v.0.8.8 or above
 + Install <a href="http://www.mongodb.org/">mongoDB</a>
 + Create a directory to host Kili.us
-+ Run
-    >git clone https://github.com/jmhorak/Kilius.git
-    >git clone https://github.com/jmhorak/Kilius-client.git
-    >git clone https://github.com/jmhorak/promise.js.git
-    >npm install Kilius/src/node_modules/node-mongodb-native
++ Run<br>
+   <pre>&gt;  git clone https://github.com/jmhorak/Kilius.git<br>
+   &gt;  git clone https://github.com/jmhorak/Kilius-client.git<br>
+   &gt;  git clone https://github.com/jmhorak/promise.js.git<br>
+   &gt;  npm install Kilius/src/node_modules/node-mongodb-native<br></pre>
 + Open Kilius/options.json to customize
 + If running as an upstart service, edit Kilius/kilius.conf appropriately then copy to /etc/init
 
@@ -28,13 +28,17 @@ Optional Steps
 Running the Server
 ------------
 + If starting as an upstart service
-    >sudo service kilius start
+
+    <pre>&gt; sudo service kilius start</pre>
+
 + Start with CLI
-    >node Kilius/kilius.js
+
+    <pre>&gt; node Kilius/kilius.js</pre>
 
 Options
 ------------
 There are some deployment options in Kilius/options.json
+
 + database - The name of the mongodb database to use
 + serverPort - Node server port number. Change to 80 if node does not cohabitate with another web server
 + databaseHost - The mongo server may be on a different machine - this is the hostname for its location
@@ -53,22 +57,23 @@ The server ships with a full suite of unit tests written for the Jasmine unit te
 Jasmine is not included in deployment. If you wish to run the unit tests, you'll need to install Jasmine and the Jasmine node_module.
 
 + Jasmine (https://github.com/pivotal/jasmine)
-    >mkdir Kilius/lib && pushd Kilius/lib
-    >git clone https://github.com/pivotal/jasmine.git
-    >popd
+
+    <pre>&gt; mkdir Kilius/lib && pushd Kilius/lib<br>
+    &gt; git clone https://github.com/pivotal/jasmine.git<br>
+    &gt; popd</pre>
 
 + Jasmine node_module (https://github.com/mhevery/jasmine-node)
-    >mkdir Kilius/lib/node_modules && pushd Kilius/lib/node_modules
-    >npm install jasmine-node -g
-    >popd
+
+    <pre>&gt; mkdir Kilius/lib/node\_modules && pushd Kilius/lib/node_modules<br>
+    &gt; npm install jasmine-node -g<br>
+    &gt; popd</pre>
 
 You can run the unit tests with the command
-    >node Kilius/lib/node_modules/jasmine-node/lib/jasmine-node/cli.js --color --verbose spec/
+
+<pre>&gt; node Kilius/lib/node_modules/jasmine-node/lib/jasmine-node/cli.js --color --verbose spec/</pre>
 
 Author
 ------------
-Jeff Horak
-
-http://jeffhorak.com
-
+Jeff Horak<br>
+http://jeffhorak.com<br>
 <a href="https://twitter.com/jmhorak">@jmhorak</a>
