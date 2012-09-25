@@ -13,10 +13,10 @@ So, here are the installation instructions.
 + Install <a href="http://www.mongodb.org/">mongoDB</a>
 + Create a directory to host Kili.us
 + Run
-  >git clone https://github.com/jmhorak/Kilius.git
-  >git clone https://github.com/jmhorak/Kilius-client.git
-  >git clone https://github.com/jmhorak/promise.js.git
-  >npm install Kilius/src/node_modules/node-mongodb-native
+    >git clone https://github.com/jmhorak/Kilius.git
+    >git clone https://github.com/jmhorak/Kilius-client.git
+    >git clone https://github.com/jmhorak/promise.js.git
+    >npm install Kilius/src/node_modules/node-mongodb-native
 + Open Kilius/options.json to customize
 + If running as an upstart service, edit Kilius/kilius.conf appropriately then copy to /etc/init
 
@@ -28,9 +28,9 @@ Optional Steps
 Running the Server
 ------------
 + If starting as an upstart service
-  >sudo service kilius start
+    >sudo service kilius start
 + Start with CLI
-  >node Kilius/kilius.js
+    >node Kilius/kilius.js
 
 Options
 ------------
@@ -53,20 +53,22 @@ The server ships with a full suite of unit tests written for the Jasmine unit te
 Jasmine is not included in deployment. If you wish to run the unit tests, you'll need to install Jasmine and the Jasmine node_module.
 
 + Jasmine (https://github.com/pivotal/jasmine)
-  >mkdir Kilius/lib && pushd Kilius/lib
-  >git clone https://github.com/pivotal/jasmine.git
-  >popd
+    >mkdir Kilius/lib && pushd Kilius/lib
+    >git clone https://github.com/pivotal/jasmine.git
+    >popd
 
 + Jasmine node_module (https://github.com/mhevery/jasmine-node)
-  >mkdir Kilius/lib/node_modules && pushd Kilius/lib/node_modules
-  >npm install jasmine-node -g
-  >popd
+    >mkdir Kilius/lib/node_modules && pushd Kilius/lib/node_modules
+    >npm install jasmine-node -g
+    >popd
 
 You can run the unit tests with the command
-  >node Kilius/lib/node_modules/jasmine-node/lib/jasmine-node/cli.js --color --verbose spec/
+    >node Kilius/lib/node_modules/jasmine-node/lib/jasmine-node/cli.js --color --verbose spec/
 
 Author
 ------------
 Jeff Horak
+
 http://jeffhorak.com
-@jmhorak
+
+<a href="https://twitter.com/jmhorak">@jmhorak</a>
