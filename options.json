@@ -8,5 +8,6 @@
   "throttleLimit" : 25,
   "throttleTime": 86400000,
   "statsPageLimit": 10,
+  "serviceHostName": "kili.us",
   "clientRootFilePath": "../Kilius-client/publish"
 }

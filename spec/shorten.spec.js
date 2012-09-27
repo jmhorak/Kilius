@@ -257,6 +257,26 @@ describe('shortening a hyperlink', function() {
 
     });
 
+    it('should use the service host name from the options', function() {
+      var waffles = 'waffles.us';
+      opt.serviceHostName = waffles;
+      spyOn(db, 'getNextLinkID').andCallFake(function() {
+        return helper.resolveAPromise(1);
+      });
+
+      spyOn(db, 'insertLink').andCallFake(function() {
+        return helper.resolveAPromise();
+      });
+
+      shorten.shortenURL({
+        url: 'http://nodejs.org',
+        client: '192.168.13.1'
+      }).then(spy, notCalled);
+
+      expect(spy).toHaveBeenCalledWith('http://' + waffles + '/+/2', 1);
+      expect(notCalled).not.toHaveBeenCalled();
+    });
+
   });
 
   describe('writing to the activity log', function() {
