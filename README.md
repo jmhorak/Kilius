@@ -48,6 +48,7 @@ There are some deployment options in Kilius/options.json
 + throttleLimit - Kilius throttles the number of requests from a single user, use this to set the throttle limit
 + throttleTime - The time limit before the throttling resets in milliseconds
 + statsPageLimit - Requests for previously shortened links are paged at this limit
++ serviceHostName - Change the host name of the shortened URL
 + clientRootFilePath - Path to the client files
 
 Unit Tests
