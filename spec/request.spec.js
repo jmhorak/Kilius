@@ -30,16 +30,16 @@ describe('testing the request handler module', function() {
   });
 
   describe('handling a request to resolve a URL', function() {
-    var host = 'abc123',
+    var remote = 'abc123',
         url = 'http://kili.us/+/123',
         ua = 'Mozilla',
         payload = {
-          host: host,
+          remote: remote,
           url: { href: url},
           ua: ua
         },
         testPayload = {
-          client: host,
+          client: remote,
           url: url,
           userAgent: ua
         };
@@ -104,7 +104,7 @@ describe('testing the request handler module', function() {
 
       spyOn(stats, 'linksForUser').andReturn(new Promise());
 
-      handler.handleStatsForUser({ url: {}, host: client, response: response });
+      handler.handleStatsForUser({ url: {}, remote: client, response: response });
 
       expect(stats.linksForUser).toHaveBeenCalledWith({
         clientID: client,
@@ -117,7 +117,7 @@ describe('testing the request handler module', function() {
 
       spyOn(stats, 'linksForUser').andReturn(new Promise());
 
-      handler.handleStatsForUser({ url: { query: 'page=10' }, host: client, response: response });
+      handler.handleStatsForUser({ url: { query: 'page=10' }, remote: client, response: response });
 
       expect(stats.linksForUser).toHaveBeenCalledWith({
         clientID: client,
@@ -138,7 +138,7 @@ describe('testing the request handler module', function() {
         return helper.resolveAPromise(results);
       });
 
-      handler.handleStatsForUser({ url: {}, host: client, response: response});
+      handler.handleStatsForUser({ url: {}, remote: client, response: response});
 
       expect(response.writeHead).toHaveBeenCalledWith(200, {
         'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ describe('testing the request handler module', function() {
         return helper.rejectAPromise(message, code);
       });
 
-      handler.handleStatsForUser({ url: {}, host: client, response: response });
+      handler.handleStatsForUser({ url: {}, remote: client, response: response });
 
       expect(response.writeHead).toHaveBeenCalledWith(code, {
         'Content-Type': 'application/json'
@@ -175,7 +175,7 @@ describe('testing the request handler module', function() {
       spyOn(fetch, 'fetchResource').andReturn(new Promise());
 
       handler.handleFetchResource({
-        host: client,
+        remote: client,
         resource: resource,
         response: response
       });
@@ -194,7 +194,7 @@ describe('testing the request handler module', function() {
       });
 
       handler.handleFetchResource({
-        host: client,
+        remote: client,
         resource: resource,
         response: response
       });
@@ -215,7 +215,7 @@ describe('testing the request handler module', function() {
       });
 
       handler.handleFetchResource({
-        host: client,
+        remote: client,
         resource: resource,
         response: response
       });
@@ -234,7 +234,7 @@ describe('testing the request handler module', function() {
       });
 
       handler.handleFetchResource({
-        host: client,
+        remote: client,
         resource: resource,
         response: response
       });
@@ -278,7 +278,7 @@ describe('testing the request handler module', function() {
     it('should pass to the shortening module', function() {
       spyOn(shorten, 'shortenURL').andReturn(new Promise());
 
-      handler.createShortenedURL({ response: response, data: { url: url }, host: client });
+      handler.createShortenedURL({ response: response, data: { url: url }, remote: client });
 
       expect(shorten.shortenURL).toHaveBeenCalledWith({
         url: url,
@@ -294,7 +294,7 @@ describe('testing the request handler module', function() {
         return helper.resolveAPromise(shortLink, throttle);
       });
 
-      handler.createShortenedURL({ response: response, data: url, host: client });
+      handler.createShortenedURL({ response: response, data: url, remote: client });
 
       expect(response.writeHead).toHaveBeenCalledWith(201, {
         'Content-Type': 'application/json',
@@ -311,7 +311,7 @@ describe('testing the request handler module', function() {
         return helper.rejectAPromise(message, code);
       });
 
-      handler.createShortenedURL({ response: response, data: url, host: client });
+      handler.createShortenedURL({ response: response, data: url, remote: client });
 
       expect(response.writeHead).toHaveBeenCalledWith(code, {
         'Content-Type': 'application/json'

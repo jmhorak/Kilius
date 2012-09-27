@@ -16,7 +16,7 @@ describe('the routing module', function() {
   var userAgent,
       contentType,
       modDate,
-      host,
+      remote,
       url,
       path,
       verb,
@@ -27,18 +27,19 @@ describe('the routing module', function() {
   function buildRequestDataObj() {
     req = req || {};
     req.headers = {
-        host: host,
+        'x-forwarded-for': remote,
         'user-agent': userAgent,
         'content-type': contentType,
         'if-modified-since': modDate
       };
     req.method = verb;
     req.url = url;
+    req.connection = {};
 
     reqData = {
       url: urlMod.parse(url),
       path: path,
-      host: host,
+      remote: remote,
       ua: userAgent,
       contentType: contentType,
       modSince: modDate,
@@ -52,7 +53,7 @@ describe('the routing module', function() {
     userAgent = 'Mozilla';
     contentType = 'application/json';
     modDate = new Date();
-    host = 'abc123';
+    remote = 'abc123';
     url = 'http://kili.us/+/abc';
     path = "/+/abc";
     verb = 'GET';
@@ -63,6 +64,39 @@ describe('the routing module', function() {
     this.addMatchers({
       toHaveBeenCalledWithObject: helper.equalObjectMatcher
     });
+  });
+
+  describe('resolving the remote address', function() {
+
+    beforeEach(function() {
+      spyOn(handler, 'handleResolveURL');
+    });
+
+    it('should get remote address from x-forwarded-for header', function() {
+      buildRequestDataObj();
+      router.handleRequest(req, res);
+
+      expect(handler.handleResolveURL.mostRecentCall.args[0].remote).toEqual(remote);
+    });
+
+    it('should get remote address from the socket', function() {
+      buildRequestDataObj();
+      delete req.headers['x-forwarded-for'];
+      req.connection.remoteAddress = remote;
+      router.handleRequest(req, res);
+
+      expect(handler.handleResolveURL.mostRecentCall.args[0].remote).toEqual(remote);
+    });
+
+    it('should prefer the x-forwarded-for address over the socket address', function() {
+      var shouldNotEqual = 'should not equal';
+      buildRequestDataObj();
+      req.connection.remoteAddress = shouldNotEqual;
+      router.handleRequest(req, res);
+
+      expect(handler.handleResolveURL.mostRecentCall.args[0].remote).toEqual(remote);
+    });
+
   });
 
   describe('turning away blacklisted clients', function() {
@@ -80,7 +114,7 @@ describe('the routing module', function() {
       buildRequestDataObj();
       router.handleRequest(req, res);
       expect(logging.log).toHaveBeenCalledWithObject({
-        client: host,
+        client: remote,
         message: 'Connection attempt from blacklisted client'
       });
     });
