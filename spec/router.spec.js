@@ -180,6 +180,8 @@ describe('the routing module', function() {
 
     beforeEach(function() {
       verb = 'POST';
+      url = 'http://kili.us/+/';
+      path = '/+/';
 
       req.on = function(evt, callback) {
 
@@ -200,8 +202,7 @@ describe('the routing module', function() {
     it('should route new URLs to the shortening handler', function() {
 
       chunk = '{ "abc": 123 }';
-      url = 'http://kili.us/+/';
-      path = '/+/';
+
       buildRequestDataObj();
 
       reqData.data = { abc: 123 };
@@ -211,11 +212,10 @@ describe('the routing module', function() {
     });
 
     it('should log an error if the posted data is not legal json', function() {
-      var code = 400;
 
+      var code = 400;
       chunk = '{ nope: not legal JSON }';
-      url = 'http://kili.us/+/';
-      path = '/+/';
+
       buildRequestDataObj();
 
       router.handleRequest(req, res);
@@ -228,6 +228,19 @@ describe('the routing module', function() {
 
       expect(res.writeHead).toHaveBeenCalledWith(code);
       expect(res.end).toHaveBeenCalled();
+    });
+
+    it('should allow content type starting with application/json', function() {
+      spyOn(handler, 'handleUnsupportedRequest');
+
+      // This is what FF posts
+      contentType = 'application/json; charset=UTF-8';
+      chunk = '{ "abc": 123 }';
+      buildRequestDataObj();
+
+      router.handleRequest(req, res);
+      expect(handler.createShortenedURL).toHaveBeenCalled();
+      expect(handler.handleUnsupportedRequest).not.toHaveBeenCalled();
     });
 
   });
