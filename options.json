@@ -8,5 +8,5 @@
   "throttleLimit" : 25,
   "throttleTime": 86400000,
   "statsPageLimit": 10,
-  "clientRootFilePath": "../Kilius-client/src"
+  "clientRootFilePath": "../Kilius-client/publish"
 }
