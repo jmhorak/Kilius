@@ -37,10 +37,61 @@ describe('shortening a hyperlink', function() {
       expect(shorten.validateURL('telnet://jeffhorak.com')).toBe(false);
       expect(shorten.validateURL('http://jeffhorak.com')).toBe(true);
       expect(shorten.validateURL('https://jeffhorak.com')).toBe(true);
+      expect(shorten.validateURL('http://jeffhorak.com:80')).toBe(true);
+      expect(shorten.validateURL('https://jeffhorak.com:443')).toBe(true);
 
     });
 
-    it('should reject invalid HTTP URLs', function() {
+    it('should allow WWW URLs with subdomains', function() {
+
+      expect(shorten.validateURL('http://subdomain.domain.com'));
+
+    });
+
+    it('should accept WWW URLs with search parameters', function() {
+
+      expect(shorten.validateURL('http://something.com?query=else')).toBe(true);
+      expect(shorten.validateURL('http://something.com/index.html?query=else')).toBe(true);
+      expect(shorten.validateURL('http://something.com/level1/level2/level3/index.html?query=else')).toBe(true);
+
+      // Multiple queries
+      expect(shorten.validateURL('http://jeffhorak.com?query=something&more=else')).toBe(true);
+
+    });
+
+    it('should accept WWW URLs with anchor identifiers', function() {
+
+      expect(shorten.validateURL('http://example.com/#test')).toBe(true);
+      expect(shorten.validateURL('http://example.com/index.html#test')).toBe(true);
+      expect(shorten.validateURL('https://developer.mozilla.org/en-US/docs/JavaScript/Guide/Regular_Expressions#Working_with_Regular_Expressions')).toBe(true);
+
+    });
+
+    it('should accept WWW URLs to files', function() {
+
+      expect(shorten.validateURL('http://www.ietf.org/rfc/rfc1738.txt')).toBe(true);
+
+    });
+
+    it('should accept localhost', function() {
+
+      expect(shorten.validateURL('http://localhost:8080/index.html'));
+
+    });
+
+    it('should reject WWW URLs with invalid characters', function() {
+
+      expect(shorten.validateURL('http:// theres a space.com')).toBe(false);
+      expect(shorten.validateURL('http://quote.com/"')).toBe(false);
+      expect(shorten.validateURL('http://[brackets].com/')).toBe(false);
+      expect(shorten.validateURL('http://(parens).com/')).toBe(false);
+      expect(shorten.validateURL('http://{braces}.com/')).toBe(false);
+      expect(shorten.validateURL('http://\'singlequote\'.com/')).toBe(false);
+      expect(shorten.validateURL('http://<anglebrackets>.com/')).toBe(false);
+
+    });
+
+    it('should reject invalid WWW URLs', function() {
 
       expect(shorten.validateURL('http:www.jeffhorak.com')).toBe(false);
       expect(shorten.validateURL('http://www.jeffhorak')).toBe(false);
